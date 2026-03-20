@@ -14,6 +14,15 @@ Metrics/ClassLength:
 
 Metrics/MethodLength:
   Max: 20
+  Exclude:
+    - test/**/*
+
+Metrics/ParameterLists:
+  Max: 6
+
+Metrics/AbcSize:
+  Exclude:
+    - test/**/*
 
 Layout/LineLength:
   Exclude:
@@ -28,6 +37,14 @@ Style/Documentation:
 
 Style/ClassAndModuleChildren:
   Enabled: false
+
+Style/OneClassPerFile:
+  Exclude:
+    - test/**/*
+
+Style/WordArray:
+  Exclude:
+    - test/**/*
 
 Gemspec/DevelopmentDependencies:
   Enabled: false
