@@ -37,10 +37,16 @@ module Trakable
       #   on:      Array of events to track (default: %i[create update destroy])
       #
       def trakable(options = {})
-        self.trakable_options = options.dup
+        # Pre-convert symbols to strings for performance
+        # This avoids Array().map(&:to_s) on every filter operation
+        normalized = options.dup
+        normalized[:only] = Array(normalized[:only]).map(&:to_s) if normalized[:only]
+        normalized[:ignore] = Array(normalized[:ignore]).map(&:to_s) if normalized[:ignore]
+
+        self.trakable_options = normalized
 
         # Register callbacks for tracking
-        register_trakable_callbacks(options[:on])
+        register_trakable_callbacks(normalized[:on])
       end
 
       private

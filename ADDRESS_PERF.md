@@ -5,9 +5,22 @@
 - [ ] 2. HIGH: N+1 queries on `item`/`whodunnit`
 - [ ] 3. HIGH: Callbacks run inside transaction
 - [ ] 4. MEDIUM: Single-pass changeset filter
-- [ ] 5. MEDIUM: Pre-convert filter symbols to strings
+- [x] 5. MEDIUM: Pre-convert filter symbols to strings ✅ (8-20% improvement)
 - [ ] 6. MEDIUM: Cache ignored_attrs as Set
 - [ ] 7. LOW: Reduce respond_to? checks
+
+## Completed Optimizations
+
+### 5. Pre-convert filter symbols to strings
+
+**Files changed:**
+- `lib/trakable/model.rb` - Normalize `only`/`ignore` to strings in `trakable` method
+- `lib/trakable/config.rb` - Ensure `ignored_attrs=` always converts to strings
+- `lib/trakable/tracker.rb` - Defensive check for pre-converted strings
+
+**Results:**
+- filter_changeset (with filters): 1.46µs → 1.34µs (8% faster)
+- filter_changeset (without filters): 0.74µs → 0.59µs (20% faster)
 
 ---
 

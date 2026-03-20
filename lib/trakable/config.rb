@@ -4,12 +4,20 @@ module Trakable
   # Stores global configuration for Trakable gem.
   # Use Trakable.configure to set options.
   class Configuration
-    attr_accessor :enabled,
-                  :ignored_attrs
+    attr_accessor :enabled
 
     def initialize
       @enabled = true
       @ignored_attrs = %w[created_at updated_at id]
+    end
+
+    # Ensure ignored_attrs are always stored as strings for performance
+    def ignored_attrs=(attrs)
+      @ignored_attrs = Array(attrs).map(&:to_s)
+    end
+
+    def ignored_attrs
+      @ignored_attrs
     end
   end
 end

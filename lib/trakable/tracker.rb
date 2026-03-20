@@ -97,7 +97,9 @@ module Trakable
       only = record.trakable_options[:only]
       return result unless only
 
-      result.slice(*Array(only).map(&:to_s))
+      # Convert to strings if needed (defensive - should be pre-converted by Model#trakable)
+      only_strings = only.first.is_a?(String) ? only : only.map(&:to_s)
+      result.slice(*only_strings)
     end
 
     def apply_ignore_filters(result)
@@ -111,14 +113,17 @@ module Trakable
       ignored = record.trakable_options[:ignore]
       return result unless ignored
 
-      result.except(*Array(ignored).map(&:to_s))
+      # Convert to strings if needed (defensive - should be pre-converted by Model#trakable)
+      ignored_strings = ignored.first.is_a?(String) ? ignored : ignored.map(&:to_s)
+      result.except(*ignored_strings)
     end
 
     def apply_global_ignore_filter(result)
       global_ignored = Trakable.configuration.ignored_attrs
-      return result unless global_ignored
+      return result unless global_ignored&.any?
 
-      result.except(*Array(global_ignored).map(&:to_s))
+      # Configuration.ignored_attrs is pre-converted to strings
+      result.except(*global_ignored)
     end
 
     def build_object_from_previous

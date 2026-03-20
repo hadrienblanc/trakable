@@ -21,7 +21,8 @@ class ModelTest < Minitest::Test
   def test_trakable_sets_options
     MockModel.trakable(only: %i[title], ignore: %i[views])
 
-    assert_equal({ only: %i[title], ignore: %i[views] }, MockModel.trakable_options)
+    # Options are normalized to strings for performance
+    assert_equal({ only: %w[title], ignore: %w[views] }, MockModel.trakable_options)
   end
 
   def test_trakable_options_empty_by_default
