@@ -21,16 +21,13 @@ module Trakable
 
     EVENTS = %w[create update destroy].freeze
 
-    attr_accessor :id,
-                  :item_type,
-                  :item_id,
-                  :event,
-                  :object,
-                  :changeset,
-                  :whodunnit_type,
-                  :whodunnit_id,
-                  :metadata,
-                  :created_at
+    ATTRS = %i[id item_type item_id event object changeset
+               whodunnit_type whodunnit_id metadata created_at].freeze
+
+    # Pre-computed ivar symbols to avoid string interpolation in initialize
+    ATTR_IVARS = ATTRS.each_with_object({}) { |a, h| h[a] = :"@#{a}" }.freeze
+
+    attr_accessor(*ATTRS)
 
     class << self
       def table_name
@@ -54,7 +51,8 @@ module Trakable
 
     def initialize(attrs = {})
       attrs.each do |key, value|
-        instance_variable_set(:"@#{key}", value)
+        ivar = ATTR_IVARS[key]
+        instance_variable_set(ivar, value) if ivar
       end
     end
 
