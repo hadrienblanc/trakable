@@ -28,3 +28,6 @@ private/*.md
 
 # Claude Code
 .claude/
+
+# Integration test coverage
+integration/coverage/
