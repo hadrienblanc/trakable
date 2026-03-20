@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.name = 'trakable'
   spec.version = Trakable::VERSION
   spec.authors = ['Hadrien Blanc']
-  spec.email = ['hadrien.blanc@example.com']
+  spec.email = ['trakable@hadrienblanc.com']
 
   spec.summary = 'Audit and versioning for ActiveRecord models'
   spec.description = 'Trakable provides audit logging and version tracking for ActiveRecord models with polymorphic whodunnit, changesets, and built-in retention'
