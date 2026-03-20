@@ -18,5 +18,6 @@ class CreateTraks < ActiveRecord::Migration[7.1]
     add_index :traks, :created_at
     add_index :traks, %i[whodunnit_type whodunnit_id]
     add_index :traks, :event
+    add_index :traks, %i[item_type created_at]
   end
 end
