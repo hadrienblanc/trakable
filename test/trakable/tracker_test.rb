@@ -183,12 +183,12 @@ class TrackerTest < Minitest::Test
     Trakable.configuration.ignored_attrs = nil
   end
 
-  def test_empty_previous_changes_returns_empty_changeset
+  def test_empty_previous_changes_skips_trak_creation
     @record.previous_changes = {}
 
     trak = Trakable::Tracker.call(@record, 'update')
 
-    assert_equal({}, trak.changeset)
+    assert_nil trak
   end
 
   def test_filter_changeset_with_no_trakable_options

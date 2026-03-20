@@ -24,6 +24,7 @@ module Trakable
     def call
       return unless tracking_enabled?
       return if skip?
+      return if event == 'update' && changeset.empty?
 
       build_trak
     end
