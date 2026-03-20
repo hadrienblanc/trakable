@@ -39,12 +39,12 @@ module Trakable
 
       def build(item:, event:, changeset:, object: nil, whodunnit: nil, metadata: nil)
         new(
-          item_type: item.class.to_s,
+          item_type: item.class.name,
           item_id: item.id,
-          event: event.to_s,
+          event: event,
           object: object,
           changeset: changeset,
-          whodunnit_type: whodunnit&.class&.to_s,
+          whodunnit_type: whodunnit&.class&.name,
           whodunnit_id: whodunnit&.id,
           metadata: metadata,
           created_at: Time.now
@@ -54,8 +54,7 @@ module Trakable
 
     def initialize(attrs = {})
       attrs.each do |key, value|
-        setter = "#{key}="
-        send(setter, value) if respond_to?(setter)
+        instance_variable_set(:"@#{key}", value)
       end
     end
 
