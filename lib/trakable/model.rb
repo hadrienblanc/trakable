@@ -30,32 +30,45 @@ module Trakable
       # Configure tracking for this model
       #
       # Options:
-      #   only:    Array of attrs to track (default: all except ignored)
-      #   ignore:  Array of attrs to skip (default: global ignored_attrs)
-      #   if:      Proc/Method name - track only if true
-      #   unless:  Proc/Method name - skip tracking if true
-      #   on:      Array of events to track (default: %i[create update destroy])
+      #   only:          Array of attrs to track (default: all except ignored)
+      #   ignore:        Array of attrs to skip (default: global ignored_attrs)
+      #   if:            Proc/Method name - track only if true
+      #   unless:        Proc/Method name - skip tracking if true
+      #   on:            Array of events to track (default: %i[create update destroy])
+      #   callback_type: :after or :after_commit (default: :after)
+      #                  Use :after_commit to track after transaction commits
       #
       def trakable(options = {})
-        self.trakable_options = options.dup
+        normalized = options.dup
+        callback_type = normalized.delete(:callback_type) || :after
+
+        self.trakable_options = normalized
 
         # Register callbacks for tracking
-        register_trakable_callbacks(options[:on])
+        register_trakable_callbacks(normalized[:on], callback_type)
       end
 
       private
 
-      def register_trakable_callbacks(events)
+      def register_trakable_callbacks(events, callback_type = :after)
         events = Array(events).presence || %i[create update destroy]
 
         events.each do |event|
-          case event.to_sym
-          when :create
-            after_create :trak_create
-          when :update
-            after_update :trak_update
-          when :destroy
-            after_destroy :trak_destroy
+          method_name = "trak_#{event}"
+
+          if callback_type == :after_commit
+            after_commit on: event, &:trak_create if event == :create
+            after_commit on: event, &:trak_update if event == :update
+            after_commit on: event, &:trak_destroy if event == :destroy
+          else
+            case event.to_sym
+            when :create
+              after_create method_name
+            when :update
+              after_update method_name
+            when :destroy
+              after_destroy method_name
+            end
           end
         end
       end

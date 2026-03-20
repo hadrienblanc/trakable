@@ -32,35 +32,35 @@ class ModelTest < Minitest::Test
   def test_registers_create_callback_when_create_in_events
     callbacks = MockModelWithCreate.registered_callbacks
 
-    assert_includes callbacks, :trak_create
+    assert_includes callbacks, "trak_create"
   end
 
   def test_registers_update_callback_when_update_in_events
     callbacks = MockModelWithUpdate.registered_callbacks
 
-    assert_includes callbacks, :trak_update
+    assert_includes callbacks, "trak_update"
   end
 
   def test_registers_destroy_callback_when_destroy_in_events
     callbacks = MockModelWithDestroy.registered_callbacks
 
-    assert_includes callbacks, :trak_destroy
+    assert_includes callbacks, "trak_destroy"
   end
 
   def test_registers_all_callbacks_by_default
     callbacks = MockModel.registered_callbacks
 
-    assert_includes callbacks, :trak_create
-    assert_includes callbacks, :trak_update
-    assert_includes callbacks, :trak_destroy
+    assert_includes callbacks, "trak_create"
+    assert_includes callbacks, "trak_update"
+    assert_includes callbacks, "trak_destroy"
   end
 
   def test_registers_all_callbacks_when_on_is_empty_array
     callbacks = MockModelWithEmptyOn.registered_callbacks
 
-    assert_includes callbacks, :trak_create
-    assert_includes callbacks, :trak_update
-    assert_includes callbacks, :trak_destroy
+    assert_includes callbacks, "trak_create"
+    assert_includes callbacks, "trak_update"
+    assert_includes callbacks, "trak_destroy"
   end
 
   def test_invalid_event_is_ignored_in_case_statement
@@ -69,6 +69,32 @@ class ModelTest < Minitest::Test
 
     # No callbacks should be registered for invalid event
     assert_empty callbacks
+  end
+
+  # after_commit callback option
+  def test_trakable_with_after_commit_option
+    callbacks = MockModelWithAfterCommit.registered_after_commit_callbacks
+
+    assert callbacks[:create].any?, "Expected after_commit on: :create to be registered"
+    assert callbacks[:update].any?, "Expected after_commit on: :update to be registered"
+    assert callbacks[:destroy].any?, "Expected after_commit on: :destroy to be registered"
+  end
+
+  def test_trakable_with_after_commit_and_specific_events
+    callbacks = MockModelWithAfterCommitCreate.registered_after_commit_callbacks
+
+    assert callbacks[:create].any?, "Expected after_commit on: :create to be registered"
+    refute callbacks[:update]&.any?, "Expected no after_commit for :update"
+    refute callbacks[:destroy]&.any?, "Expected no after_commit for :destroy"
+  end
+
+  def test_trakable_callback_type_default_is_after
+    # Default callback_type should be :after (after_create, after_update, after_destroy)
+    callbacks = MockModel.registered_callbacks
+
+    assert_includes callbacks, "trak_create"
+    assert_includes callbacks, "trak_update"
+    assert_includes callbacks, "trak_destroy"
   end
 
   # Callback calls Tracker
@@ -151,6 +177,10 @@ module MockActiveRecord
       @registered_callbacks ||= []
     end
 
+    def registered_after_commit_callbacks
+      @registered_after_commit_callbacks ||= {}
+    end
+
     def after_create(method_name)
       registered_callbacks << method_name
     end
@@ -161,6 +191,16 @@ module MockActiveRecord
 
     def after_destroy(method_name)
       registered_callbacks << method_name
+    end
+
+    def after_commit(on:)
+      Array(on).each do |event|
+        registered_after_commit_callbacks[event] ||= []
+        # Handle both block and &:symbol syntax
+        if block_given?
+          registered_after_commit_callbacks[event] << :block
+        end
+      end
     end
 
     def has_many(*args)
@@ -259,6 +299,10 @@ class MockModelInstanceMethods
     # Stub
   end
 
+  def self.after_commit(on:, &block)
+    # Stub
+  end
+
   include Trakable::Model
 
   trakable
@@ -274,5 +318,21 @@ class MockModelInstanceMethods
   def attributes
     { 'id' => @id, 'title' => @title }
   end
+end
+
+# Test model with after_commit callback_type
+class MockModelWithAfterCommit
+  include MockActiveRecord
+  include Trakable::Model
+
+  trakable callback_type: :after_commit
+end
+
+# Test model with after_commit callback_type and specific event
+class MockModelWithAfterCommitCreate
+  include MockActiveRecord
+  include Trakable::Model
+
+  trakable on: %i[create], callback_type: :after_commit
 end
 # rubocop:enable Naming/PredicatePrefix
