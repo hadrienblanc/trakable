@@ -155,6 +155,29 @@ post.trak_at(1.day.ago)  # => Non-persisted record with state from 1 day ago
 post.traks.last.reify  # => Non-persisted record with state at that trak
 ```
 
+### Query scopes
+
+```ruby
+# Filter by model type
+Trakable::Trak.for_item_type('Post')
+
+# Filter by event
+Trakable::Trak.for_event(:update)
+
+# Filter by whodunnit
+Trakable::Trak.for_whodunnit(current_user)
+
+# Filter by time range
+Trakable::Trak.created_after(1.week.ago)
+Trakable::Trak.created_before(Date.yesterday)
+
+# Newest first
+Trakable::Trak.recent
+
+# Combine them
+Trakable::Trak.for_item_type('Post').for_event(:update).created_after(1.day.ago).recent
+```
+
 ### Temporarily disable tracking
 
 ```ruby
@@ -235,6 +258,12 @@ destroy_trak.revert!  # => Creates new record with same attributes but new ID
 | `destroy?` | True if this is a destroy event |
 | `reify` | Build non-persisted record with state at this trak |
 | `revert!` | Restore record to state before this trak |
+| `for_item_type(type)` | Scope: filter by item type |
+| `for_event(event)` | Scope: filter by event |
+| `for_whodunnit(user)` | Scope: filter by whodunnit (polymorphic) |
+| `created_before(time)` | Scope: traks before a timestamp |
+| `created_after(time)` | Scope: traks after a timestamp |
+| `recent` | Scope: newest first |
 
 ### Trakable::Controller
 

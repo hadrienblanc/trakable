@@ -228,6 +228,16 @@ class TrakTest < Minitest::Test
     assert_nil trak.whodunnit_type
     assert_nil trak.whodunnit_id
   end
+
+  # Scopes are AR-only — verify non-AR mode does not define them
+  def test_scopes_not_defined_in_non_ar_mode
+    refute Trakable::Trak.respond_to?(:for_item_type)
+    refute Trakable::Trak.respond_to?(:for_event)
+    refute Trakable::Trak.respond_to?(:for_whodunnit)
+    refute Trakable::Trak.respond_to?(:created_before)
+    refute Trakable::Trak.respond_to?(:created_after)
+    refute Trakable::Trak.respond_to?(:recent)
+  end
 end
 
 # Mock classes for testing

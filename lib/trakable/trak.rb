@@ -23,6 +23,13 @@ module Trakable
 
       belongs_to :item, polymorphic: true, optional: true
       belongs_to :whodunnit, polymorphic: true, optional: true
+
+      scope :for_item_type, ->(type) { where(item_type: type.to_s) }
+      scope :for_event, ->(event) { where(event: event.to_s) }
+      scope :for_whodunnit, ->(user) { where(whodunnit_type: user.class.name, whodunnit_id: user.id) }
+      scope :created_before, ->(time) { where(arel_table[:created_at].lt(time)) }
+      scope :created_after, ->(time) { where(arel_table[:created_at].gt(time)) }
+      scope :recent, -> { order(created_at: :desc) }
     else
       ATTRS = %i[id item_type item_id event object changeset
                  whodunnit_type whodunnit_id metadata created_at].freeze
