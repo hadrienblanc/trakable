@@ -118,13 +118,9 @@ module Trakable
     end
 
     def build_object_from_previous
-      current = record.attributes.except('id')
-
-      record.previous_changes.each do |attr, (old, _new)|
-        current[attr] = old
-      end
-
-      current
+      delta = {}
+      record.previous_changes.each { |attr, (old, _)| delta[attr] = old }
+      delta
     end
 
     def whodunnit

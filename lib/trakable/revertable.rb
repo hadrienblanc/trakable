@@ -29,7 +29,14 @@ module Trakable
       return nil if object.nil? || object.empty?
 
       model_class.new.tap do |record|
-        object&.each do |attr, value|
+        # Start with current attributes if the item still exists
+        if (current = item)
+          current.attributes.each do |attr, val|
+            record.write_attribute(attr, val) if record.respond_to?(attr)
+          end
+        end
+        # Apply stored old values on top (delta or full snapshot)
+        object.each do |attr, value|
           record.write_attribute(attr, value) if record.respond_to?(attr)
         end
       end

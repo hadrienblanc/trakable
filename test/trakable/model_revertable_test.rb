@@ -11,6 +11,7 @@ class ModelRevertableTest < Minitest::Test
 
   def teardown
     Trakable::Context.reset!
+    MockModelWithTraks.records.clear
   end
 
   # trak_at
@@ -149,6 +150,14 @@ class MockTrak
     end
   end
 
+  def item
+    return nil unless item_type && item_id
+
+    item_type.constantize.find_by(id: item_id)
+  rescue NameError
+    nil
+  end
+
   def create?
     event == 'create'
   end
@@ -168,11 +177,22 @@ class MockModelWithTraks
 
   attr_accessor :id, :title, :created_at, :traks_array
 
+  @records = {}
+
+  class << self
+    attr_accessor :records
+
+    def find_by(id:)
+      records[id]
+    end
+  end
+
   def initialize(id = nil)
     @id = id
     @title = 'Current Title'
     @created_at = Time.now
     @traks_array = []
+    self.class.records[id] = self if id
   end
 
   def traks
