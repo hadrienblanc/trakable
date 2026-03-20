@@ -34,7 +34,6 @@ module Trakable
 
     def tracking_enabled?
       return false unless Trakable.enabled?
-      return true unless Context.respond_to?(:tracking_enabled?)
 
       Context.tracking_enabled?
     end
@@ -126,11 +125,11 @@ module Trakable
     end
 
     def whodunnit
-      Context.whodunnit if Context.respond_to?(:whodunnit)
+      Context.whodunnit
     end
 
     def metadata
-      Context.metadata if Context.respond_to?(:metadata)
+      Context.metadata
     end
   end
 end
