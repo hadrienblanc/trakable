@@ -10,7 +10,7 @@ module Trakable
 
       source_root File.expand_path('templates', __dir__)
 
-      desc 'Creates a migration for the traks table.'
+      desc 'Creates a migration and initializer for Trakable.'
 
       def self.next_migration_number(_dir)
         Time.now.utc.strftime('%Y%m%d%H%M%S')
@@ -18,6 +18,10 @@ module Trakable
 
       def copy_migration
         migration_template 'create_traks_migration.rb', 'db/migrate/create_traks.rb'
+      end
+
+      def copy_initializer
+        template 'trakable_initializer.rb', 'config/initializers/trakable.rb'
       end
     end
   end
