@@ -84,12 +84,16 @@ module Trakable
       return nil unless item_type && item_id
 
       @item ||= item_type.constantize.find_by(id: item_id)
+    rescue NameError
+      nil
     end
 
     def whodunnit
       return nil unless whodunnit_type && whodunnit_id
 
       @whodunnit ||= whodunnit_type.constantize.find_by(id: whodunnit_id)
+    rescue NameError
+      nil
     end
 
     def object
