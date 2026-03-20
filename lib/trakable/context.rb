@@ -14,6 +14,14 @@ module Trakable
         context[:whodunnit] = value
       end
 
+      def metadata
+        context[:metadata]
+      end
+
+      def metadata=(value)
+        context[:metadata] = value
+      end
+
       def tracking_enabled?
         return Trakable.enabled? unless context.key?(:tracking_enabled)
 
