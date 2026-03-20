@@ -21,7 +21,7 @@ module Trakable
       class_attribute :trakable_options, instance_writer: false, default: {}
 
       # has_many :traks association
-      has_many :traks, as: :item, class_name: 'Trakable::Trak', dependent: :nullify
+      has_many :traks, as: :item, class_name: 'Trakable::Trak'
 
       # Include revertable methods
       include ModelRevertable
