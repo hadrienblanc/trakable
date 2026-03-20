@@ -19,6 +19,8 @@ module Trakable
     extend ActiveSupport::Concern
 
     included do
+      class_attribute :trakable_whodunnit_method, instance_writer: false, default: :current_user
+
       # Only register callback if around_action is available (Rails controllers)
       around_action :set_trakable_whodunnit if respond_to?(:around_action)
     end
@@ -32,18 +34,14 @@ module Trakable
       #   set_trakable_whodunnit :current_admin
       #
       def set_trakable_whodunnit(method_name = :current_user)
-        @trakable_whodunnit_method = method_name
-      end
-
-      def trakable_whodunnit_method
-        @trakable_whodunnit_method || :current_user
+        self.trakable_whodunnit_method = method_name
       end
     end
 
     private
 
     def set_trakable_whodunnit(&)
-      user = send(self.class.trakable_whodunnit_method)
+      user = send(trakable_whodunnit_method)
       Trakable.with_user(user, &)
     end
   end
