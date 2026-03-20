@@ -253,6 +253,38 @@ destroy_trak.revert!  # => Creates new record with same attributes but new ID
 |--------|-------------|
 | `set_trakable_whodunnit(method)` | Configure method to get current user (default: :current_user) |
 
+## Performance Tips
+
+### Eager loading (N+1 prevention)
+
+When loading multiple records with their traks, use `includes` to avoid N+1 queries:
+
+```ruby
+# Bad — N+1
+posts = Post.all
+posts.each { |p| p.traks.count }
+
+# Good — eager loaded
+posts = Post.includes(:traks).all
+posts.each { |p| p.traks.size }
+```
+
+### Compress serialized columns (Rails 7.1+)
+
+For large `object`/`changeset` payloads, enable column compression:
+
+```ruby
+class Trak < ApplicationRecord
+  self.table_name = 'traks'
+
+  serialize :object, coder: JSON, compress: true
+  serialize :changeset, coder: JSON, compress: true
+  serialize :metadata, coder: JSON
+end
+```
+
+This uses zlib under the hood and can reduce storage by 60-80% for large payloads.
+
 ## Differences from PaperTrail
 
 | Feature | PaperTrail | Trakable |
