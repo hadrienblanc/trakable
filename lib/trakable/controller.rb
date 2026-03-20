@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'active_support/concern'
+require 'active_support/core_ext/class/attribute'
 
 module Trakable
   # Controller concern for automatically setting whodunnit from current_user.
