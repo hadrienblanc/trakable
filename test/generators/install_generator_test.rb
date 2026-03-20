@@ -5,7 +5,7 @@ require 'rails/generators'
 require_relative '../../lib/generators/trakable/install_generator'
 
 class InstallGeneratorTest < Minitest::Test
-  TEMPLATE_PATH = File.expand_path('../../lib/generators/trakable/templates/create_traks.rb', __dir__)
+  TEMPLATE_PATH = File.expand_path('../../lib/generators/trakable/templates/create_traks_migration.rb', __dir__)
 
   def template_content
     @template_content ||= File.read(TEMPLATE_PATH)
@@ -67,6 +67,6 @@ class InstallGeneratorTest < Minitest::Test
     source_root = generator.source_root
 
     assert File.directory?(source_root), 'Source root should be a directory'
-    assert File.exist?(File.join(source_root, 'create_traks.rb'))
+    assert File.exist?(File.join(source_root, 'create_traks_migration.rb'))
   end
 end
