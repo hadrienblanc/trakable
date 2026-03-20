@@ -17,6 +17,8 @@ module Trakable
   #   end
   #
   class Trak
+    include Revertable
+
     EVENTS = %w[create update destroy].freeze
 
     attr_accessor :id,
