@@ -128,7 +128,7 @@ class TrackerTest < Minitest::Test
 
   # Filter options
   def test_only_option_filters_changeset
-    @record.trakable_options = { only: [:title] }
+    @record.trakable_options = { only: ['title'] }
 
     trak = Trakable::Tracker.call(@record, 'update')
 
@@ -146,7 +146,7 @@ class TrackerTest < Minitest::Test
   end
 
   def test_ignore_option_filters_changeset
-    @record.trakable_options = { ignore: [:status] }
+    @record.trakable_options = { ignore: ['status'] }
 
     trak = Trakable::Tracker.call(@record, 'update')
 
@@ -164,7 +164,7 @@ class TrackerTest < Minitest::Test
   end
 
   def test_combined_only_and_ignore_options
-    @record.trakable_options = { only: %i[title status], ignore: [:status] }
+    @record.trakable_options = { only: %w[title status], ignore: ['status'] }
 
     trak = Trakable::Tracker.call(@record, 'update')
 

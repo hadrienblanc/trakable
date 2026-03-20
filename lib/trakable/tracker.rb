@@ -101,17 +101,14 @@ module Trakable
       only = record.trakable_options[:only]
       return changes unless only
 
-      only_strings = only.first.is_a?(String) ? only : only.map(&:to_s)
-      changes.slice(*only_strings)
+      changes.slice(*only)
     end
 
     def apply_ignore_filter(changes)
       ignore = []
       if trakable_record?
         record_ignore = record.trakable_options[:ignore]
-        if record_ignore
-          ignore.concat(record_ignore.first.is_a?(String) ? record_ignore : record_ignore.map(&:to_s))
-        end
+        ignore.concat(record_ignore) if record_ignore
       end
       global = Trakable.configuration.ignored_attrs
       ignore.concat(global) if global&.any?
