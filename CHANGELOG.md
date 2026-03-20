@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-03-20
+
+### Fixed
+
+- **Remove `dependent: :nullify`** on traks association — traks now survive record destruction (was crashing on destroy due to NOT NULL constraint)
+- **Skip empty changeset traks** — updating only non-tracked attributes no longer creates a trak with an empty changeset
+- **Use `instance_exec` for `if:`/`unless:` conditions** — lambdas with strict arity checking now work correctly
+
+### Added
+
+- **100 integration tests** with real ActiveRecord + SQLite covering lifecycle, filtering, conditional tracking, scopes, reify, revert, cleanup, transactions, STI, and more
+- **Release workflow** — gem is auto-published to RubyGems on tag push
+
 ## [0.2.0] - 2026-03-20
 
 ### Added
@@ -46,5 +59,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive README with usage examples
 - MIT License
 
+[0.2.1]: https://github.com/hadrienblanc/trakable/releases/tag/v0.2.1
 [0.2.0]: https://github.com/hadrienblanc/trakable/releases/tag/v0.2.0
 [0.1.0]: https://github.com/hadrienblanc/trakable/releases/tag/v0.1.0
