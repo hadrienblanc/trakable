@@ -36,6 +36,7 @@ end
 
 require_relative 'trakable/config'
 require_relative 'trakable/context'
+require_relative 'trakable/controller'
 require_relative 'trakable/model'
 require_relative 'trakable/revertable'
 require_relative 'trakable/trak'
