@@ -39,9 +39,15 @@ module Trakable
     end
 
     def skip?
-      return false unless record.respond_to?(:trakable_options)
+      return false unless trakable_record?
 
       skip_if_condition? || skip_unless_condition?
+    end
+
+    def trakable_record?
+      return @trakable_record if defined?(@trakable_record)
+
+      @trakable_record = record.respond_to?(:trakable_options)
     end
 
     def skip_if_condition?
@@ -90,7 +96,7 @@ module Trakable
     end
 
     def apply_only_filter(changes)
-      return changes unless record.respond_to?(:trakable_options)
+      return changes unless trakable_record?
 
       only = record.trakable_options[:only]
       return changes unless only
@@ -101,7 +107,7 @@ module Trakable
 
     def apply_ignore_filter(changes)
       ignore = []
-      if record.respond_to?(:trakable_options)
+      if trakable_record?
         record_ignore = record.trakable_options[:ignore]
         if record_ignore
           ignore.concat(record_ignore.first.is_a?(String) ? record_ignore : record_ignore.map(&:to_s))
