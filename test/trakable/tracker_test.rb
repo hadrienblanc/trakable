@@ -125,6 +125,113 @@ class TrackerTest < Minitest::Test
 
     assert_instance_of Trakable::Trak, trak
   end
+
+  # Filter options
+  def test_only_option_filters_changeset
+    @record.trakable_options = { only: [:title] }
+
+    trak = Trakable::Tracker.call(@record, 'update')
+
+    assert trak.changeset.key?('title')
+    refute trak.changeset.key?('status')
+  end
+
+  def test_only_option_as_string_filters_changeset
+    @record.trakable_options = { only: ['title'] }
+
+    trak = Trakable::Tracker.call(@record, 'update')
+
+    assert trak.changeset.key?('title')
+    refute trak.changeset.key?('status')
+  end
+
+  def test_ignore_option_filters_changeset
+    @record.trakable_options = { ignore: [:status] }
+
+    trak = Trakable::Tracker.call(@record, 'update')
+
+    assert trak.changeset.key?('title')
+    refute trak.changeset.key?('status')
+  end
+
+  def test_ignore_option_as_string_filters_changeset
+    @record.trakable_options = { ignore: ['status'] }
+
+    trak = Trakable::Tracker.call(@record, 'update')
+
+    assert trak.changeset.key?('title')
+    refute trak.changeset.key?('status')
+  end
+
+  def test_combined_only_and_ignore_options
+    @record.trakable_options = { only: %i[title status], ignore: [:status] }
+
+    trak = Trakable::Tracker.call(@record, 'update')
+
+    assert trak.changeset.key?('title')
+    refute trak.changeset.key?('status')
+  end
+
+  def test_global_ignored_attrs_filters_changeset
+    Trakable.configuration.ignored_attrs = [:status]
+
+    trak = Trakable::Tracker.call(@record, 'update')
+
+    assert trak.changeset.key?('title')
+    refute trak.changeset.key?('status')
+  ensure
+    Trakable.configuration.ignored_attrs = nil
+  end
+
+  def test_empty_previous_changes_returns_empty_changeset
+    @record.previous_changes = {}
+
+    trak = Trakable::Tracker.call(@record, 'update')
+
+    assert_equal({}, trak.changeset)
+  end
+
+  def test_filter_changeset_with_no_trakable_options
+    record = MockRecordWithEmptyOptions.new(1)
+    record.previous_changes = { 'title' => %w[Old New] }
+
+    trak = Trakable::Tracker.call(record, 'update')
+
+    assert trak.changeset.key?('title')
+  end
+
+  # Skip conditions
+  def test_skips_when_if_condition_returns_false
+    @record.trakable_options = { if: proc { false } }
+
+    trak = Trakable::Tracker.call(@record, 'update')
+
+    assert_nil trak
+  end
+
+  def test_skips_when_unless_condition_returns_true
+    @record.trakable_options = { unless: proc { true } }
+
+    trak = Trakable::Tracker.call(@record, 'update')
+
+    assert_nil trak
+  end
+
+  def test_tracks_when_if_condition_returns_true
+    @record.trakable_options = { if: proc { true } }
+
+    trak = Trakable::Tracker.call(@record, 'update')
+
+    assert trak
+  end
+
+  def test_tracks_when_unless_condition_returns_false
+    @record.trakable_options = { unless: proc { false } }
+
+    trak = Trakable::Tracker.call(@record, 'update')
+
+    assert trak
+  end
 end
 
 # Mock classes for testing
@@ -150,5 +257,23 @@ class MockActor
 
   def initialize(id)
     @id = id
+  end
+end
+
+# Mock record with empty trakable_options for testing filter without options
+class MockRecordWithEmptyOptions
+  attr_accessor :id, :content, :title, :status, :previous_changes, :trakable_options
+
+  def initialize(id)
+    @id = id
+    @content = 'Content'
+    @title = 'Title'
+    @status = 0
+    @previous_changes = {}
+    @trakable_options = {}
+  end
+
+  def attributes
+    { 'id' => @id, 'content' => @content, 'title' => @title, 'status' => @status }
   end
 end

@@ -52,13 +52,16 @@ class MockPost
 end
 # rubocop:enable Naming/PredicateMethod
 
+# rubocop:disable Metrics/ClassLength
 class RevertableTest < Minitest::Test
   def setup
     Trakable::Context.reset!
+    MockPost.records.clear
   end
 
   def teardown
     Trakable::Context.reset!
+    MockPost.records.clear
   end
 
   # reify
@@ -185,7 +188,7 @@ class RevertableTest < Minitest::Test
     assert_equal 'Deleted Body', result.body
   end
 
-  # trak_revert option
+  # trak_revert option tests - test that Tracker.call is invoked
   def test_revert_with_trak_revert_creates_revert_trak
     post = MockPost.new(1, 'New Title', 'New Body')
     MockPost.records[1] = post
@@ -198,15 +201,73 @@ class RevertableTest < Minitest::Test
     )
     trak.define_singleton_method(:item) { post }
 
-    revert_trak = Minitest::Mock.new
-    revert_trak.expect :call, true
+    # Track if Tracker.call was invoked
+    tracker_called = false
+    original_tracker_call = Trakable::Tracker.method(:call)
+    Trakable::Tracker.define_singleton_method(:call) do |_item, event|
+      tracker_called = true
+      # Create a mock trak to return
+      Trakable::Trak.new(item_type: 'MockPost', item_id: 1, event: event)
+    end
 
-    # The revert! method should call Tracker.call when trak_revert is true
-    # We're testing the flow, not the actual Tracker call here
-    result = trak.revert!(trak_revert: false)
+    result = trak.revert!(trak_revert: true)
 
     assert_equal post, result
-    assert_equal 'Old Title', post.title
+    assert tracker_called
+
+    # Restore original method
+    Trakable::Tracker.define_singleton_method(:call, original_tracker_call)
+  end
+
+  def test_revert_destroy_with_trak_revert_creates_revert_trak
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 1,
+      event: 'destroy',
+      object: { 'title' => 'Deleted Title', 'body' => 'Deleted Body' }
+    )
+
+    tracker_called = false
+    original_tracker_call = Trakable::Tracker.method(:call)
+    Trakable::Tracker.define_singleton_method(:call) do |_item, event|
+      tracker_called = true
+      Trakable::Trak.new(item_type: 'MockPost', item_id: 1, event: event)
+    end
+
+    result = trak.revert!(trak_revert: true)
+
+    assert_instance_of MockPost, result
+    assert tracker_called
+
+    Trakable::Tracker.define_singleton_method(:call, original_tracker_call)
+  end
+
+  def test_revert_create_with_trak_revert_calls_tracker
+    post = MockPost.new(1, 'Title', 'Body')
+    MockPost.records[1] = post
+
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 1,
+      event: 'create',
+      object: nil
+    )
+    trak.define_singleton_method(:item) { post }
+    post.define_singleton_method(:destroy) { delete }
+
+    tracker_called = false
+    original_tracker_call = Trakable::Tracker.method(:call)
+    Trakable::Tracker.define_singleton_method(:call) do |_item, event|
+      tracker_called = true
+      Trakable::Trak.new(item_type: 'MockPost', item_id: 1, event: event)
+    end
+
+    result = trak.revert!(trak_revert: true)
+
+    assert result
+    assert tracker_called
+
+    Trakable::Tracker.define_singleton_method(:call, original_tracker_call)
   end
 
   # revert! edge cases
@@ -267,52 +328,33 @@ class RevertableTest < Minitest::Test
 
     refute result
   end
-end
 
-# Mock classes for testing
-# rubocop:disable Naming/PredicateMethod
-class MockPost
-  attr_accessor :id, :title, :body
+  # reify edge case: empty object
+  def test_reify_returns_nil_for_empty_object
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 1,
+      event: 'update',
+      object: {}
+    )
 
-  @records = {}
-
-  class << self
-    attr_accessor :records
+    assert_nil trak.reify
   end
 
-  def self.find_by(id:)
-    records[id]
-  end
+  # reify with record that doesn't respond to attribute
+  def test_reify_skips_unknown_attributes_on_model
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 1,
+      event: 'update',
+      object: { 'title' => 'Title', 'unknown_field' => 'value' }
+    )
 
-  def initialize(id = nil, title = nil, body = nil)
-    @id = id
-    @title = title
-    @body = body
-  end
+    reified = trak.reify
 
-  def persisted?
-    !!@id
-  end
-
-  def write_attribute(attr, value)
-    instance_variable_set("@#{attr}", value)
-  end
-
-  def respond_to?(method, include_all: false)
-    %i[id title body].include?(method.to_sym) || super
-  end
-
-  def save!(*)
-    true
-  end
-
-  def delete
-    MockPost.records.delete(@id)
-    true
-  end
-
-  def attributes
-    { 'id' => @id, 'title' => @title, 'body' => @body }
+    assert_equal 'Title', reified.title
+    # unknown_field should be skipped
+    refute reified.respond_to?(:unknown_field)
   end
 end
-# rubocop:enable Naming/PredicateMethod
+# rubocop:enable Metrics/ClassLength

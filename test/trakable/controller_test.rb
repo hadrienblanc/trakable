@@ -57,6 +57,20 @@ class ControllerTest < Minitest::Test
     end
   end
 
+  def test_set_trakable_whodunnit_class_method_sets_custom_method
+    controller = MockControllerWithCustomMethod.new
+    admin = MockUser.new(42)
+    controller.current_admin = admin
+
+    controller.perform_action do
+      assert_equal admin, Trakable::Context.whodunnit
+    end
+  end
+
+  def test_set_trakable_whodunnit_returns_configured_method
+    assert_equal :current_admin, MockControllerWithCustomMethod.trakable_whodunnit_method
+  end
+
   def test_resets_whodunnit_on_exception
     user = MockUser.new(1)
     @controller.current_user = user
@@ -85,6 +99,20 @@ class ControllerTest < Minitest::Test
 
     assert_nil Trakable::Context.whodunnit
   end
+
+  def test_controller_without_around_action_still_works
+    controller = MockControllerWithoutAroundAction.new
+    user = MockUser.new(1)
+    controller.current_user = user
+
+    controller.perform_action do
+      assert_equal user, Trakable::Context.whodunnit
+    end
+  end
+
+  def test_trakable_whodunnit_method_returns_default_when_not_set
+    assert_equal :current_user, MockControllerWithoutAroundAction.trakable_whodunnit_method
+  end
 end
 
 # Mock classes for testing
@@ -104,6 +132,19 @@ class MockController
   def self.around_action(_method_name)
     # Stub - in real Rails, this registers the callback
   end
+
+  def perform_action(&)
+    set_trakable_whodunnit(&)
+  end
+end
+
+# Mock controller that does NOT respond to around_action (simulates non-Rails context)
+class MockControllerWithoutAroundAction
+  include Trakable::Controller
+
+  attr_accessor :current_user
+
+  # No around_action method - tests the respond_to? branch
 
   def perform_action(&)
     set_trakable_whodunnit(&)
@@ -131,5 +172,23 @@ class MockCustomController
   def set_trakable_whodunnit(&)
     user = send(self.class.trakable_whodunnit_method)
     Trakable.with_user(user, &)
+  end
+end
+
+# Controller that actually uses set_trakable_whodunnit class method
+class MockControllerWithCustomMethod
+  include Trakable::Controller
+
+  attr_accessor :current_admin
+
+  def self.around_action(_method_name)
+    # Stub
+  end
+
+  # Call the class method to set custom whodunnit method
+  set_trakable_whodunnit :current_admin
+
+  def perform_action(&)
+    set_trakable_whodunnit(&)
   end
 end

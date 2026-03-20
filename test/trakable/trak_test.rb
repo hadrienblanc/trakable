@@ -166,6 +166,12 @@ class TrakTest < Minitest::Test
     assert_nil trak.item
   end
 
+  def test_item_returns_nil_for_nonexistent_class
+    trak = Trakable::Trak.new(item_type: 'NonExistentClass', item_id: 1)
+
+    assert_nil trak.item
+  end
+
   # Whodunnit accessor
   def test_whodunnit_returns_nil_without_type
     trak = Trakable::Trak.new(whodunnit_id: 1)
@@ -175,6 +181,12 @@ class TrakTest < Minitest::Test
 
   def test_whodunnit_returns_nil_without_id
     trak = Trakable::Trak.new(whodunnit_type: 'User')
+
+    assert_nil trak.whodunnit
+  end
+
+  def test_whodunnit_returns_nil_for_nonexistent_class
+    trak = Trakable::Trak.new(whodunnit_type: 'NonExistentClass', whodunnit_id: 1)
 
     assert_nil trak.whodunnit
   end

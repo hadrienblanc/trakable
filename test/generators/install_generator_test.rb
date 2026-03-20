@@ -69,4 +69,45 @@ class InstallGeneratorTest < Minitest::Test
     assert File.directory?(source_root), 'Source root should be a directory'
     assert File.exist?(File.join(source_root, 'create_traks_migration.rb'))
   end
+
+  # Method coverage tests
+  def test_next_migration_number_returns_timestamp_format
+    timestamp = Trakable::Generators::InstallGenerator.next_migration_number('/some/dir')
+
+    assert_match(/^\d{14}$/, timestamp)
+  end
+
+  def test_copy_migration_calls_migration_template
+    generator = Trakable::Generators::InstallGenerator.new([], destination_root: '/tmp')
+    called = false
+    args = nil
+
+    generator.define_singleton_method(:migration_template) do |*a|
+      called = true
+      args = a
+    end
+
+    generator.copy_migration
+
+    assert called
+    assert_equal 'create_traks_migration.rb', args[0]
+    assert_equal 'db/migrate/create_traks.rb', args[1]
+  end
+
+  def test_copy_initializer_calls_template
+    generator = Trakable::Generators::InstallGenerator.new([], destination_root: '/tmp')
+    called = false
+    args = nil
+
+    generator.define_singleton_method(:template) do |*a|
+      called = true
+      args = a
+    end
+
+    generator.copy_initializer
+
+    assert called
+    assert_equal 'trakable_initializer.rb', args[0]
+    assert_equal 'config/initializers/trakable.rb', args[1]
+  end
 end

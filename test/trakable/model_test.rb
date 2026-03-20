@@ -55,6 +55,22 @@ class ModelTest < Minitest::Test
     assert_includes callbacks, :trak_destroy
   end
 
+  def test_registers_all_callbacks_when_on_is_empty_array
+    callbacks = MockModelWithEmptyOn.registered_callbacks
+
+    assert_includes callbacks, :trak_create
+    assert_includes callbacks, :trak_update
+    assert_includes callbacks, :trak_destroy
+  end
+
+  def test_invalid_event_is_ignored_in_case_statement
+    # Invalid events are silently ignored (else branch of case statement)
+    callbacks = MockModelWithInvalidEvent.registered_callbacks
+
+    # No callbacks should be registered for invalid event
+    assert_empty callbacks
+  end
+
   # Callback calls Tracker
   def test_trak_create_calls_tracker
     mock = MockModel.new(1)
@@ -86,6 +102,32 @@ class ModelTest < Minitest::Test
 
       assert_nil trak
     end
+  end
+
+  # Direct method calls on instances
+  def test_trak_create_method_on_instance
+    mock = MockModelInstanceMethods.new(1)
+    trak = mock.trak_create
+
+    assert trak
+    assert_equal 'create', trak.event
+  end
+
+  def test_trak_update_method_on_instance
+    mock = MockModelInstanceMethods.new(1)
+    mock.previous_changes = { 'title' => %w[Old New] }
+    trak = mock.trak_update
+
+    assert trak
+    assert_equal 'update', trak.event
+  end
+
+  def test_trak_destroy_method_on_instance
+    mock = MockModelInstanceMethods.new(1)
+    trak = mock.trak_destroy
+
+    assert trak
+    assert_equal 'destroy', trak.event
   end
 end
 
@@ -172,5 +214,65 @@ class MockModelWithDestroy
   include Trakable::Model
 
   trakable on: %i[destroy]
+end
+
+# Test that empty on: option falls back to default
+class MockModelWithEmptyOn
+  include MockActiveRecord
+  include Trakable::Model
+
+  trakable on: []
+
+  def self.registered_callbacks
+    @registered_callbacks ||= []
+  end
+end
+
+# Test model with invalid event (covers the else branch in case statement)
+class MockModelWithInvalidEvent
+  include MockActiveRecord
+  include Trakable::Model
+
+  trakable on: [:invalid_event]
+
+  def self.registered_callbacks
+    @registered_callbacks ||= []
+  end
+end
+
+# Mock model with actual instance methods for direct testing
+class MockModelInstanceMethods
+  # Define stubs before including the module
+  def self.has_many(*args)
+    # Stub
+  end
+
+  def self.after_create(method_name)
+    # Stub
+  end
+
+  def self.after_update(method_name)
+    # Stub
+  end
+
+  def self.after_destroy(method_name)
+    # Stub
+  end
+
+  include Trakable::Model
+
+  trakable
+
+  attr_accessor :id, :title, :previous_changes
+
+  def initialize(id)
+    @id = id
+    @title = 'Test'
+    @previous_changes = {}
+  end
+
+  def attributes
+    { 'id' => @id, 'title' => @title }
+  end
 end
 # rubocop:enable Naming/PredicatePrefix
