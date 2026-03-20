@@ -138,7 +138,13 @@ module Trakable
     end
 
     def find_trak_at(timestamp)
-      traks.select { |t| t.created_at <= timestamp }.max_by(&:created_at)
+      if traks.respond_to?(:where)
+        # ActiveRecord relation - use DB query for O(1) memory
+        traks.where('created_at <= ?', timestamp).order(created_at: :desc).first
+      else
+        # Fallback for mocks/arrays (maintains test compatibility)
+        traks.select { |t| t.created_at <= timestamp }.max_by(&:created_at)
+      end
     end
 
     def reify_or_dup(target_trak)
