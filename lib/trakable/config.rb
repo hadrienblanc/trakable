@@ -9,7 +9,7 @@ module Trakable
 
     def initialize
       @enabled = true
-      @ignored_attrs = %w[created_at updated_at]
+      @ignored_attrs = %w[created_at updated_at id]
     end
   end
 end

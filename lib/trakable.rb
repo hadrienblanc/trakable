@@ -37,5 +37,6 @@ end
 require_relative 'trakable/config'
 require_relative 'trakable/context'
 require_relative 'trakable/trak'
+require_relative 'trakable/tracker'
 
 require_relative 'trakable/railtie' if defined?(Rails::Railtie)
