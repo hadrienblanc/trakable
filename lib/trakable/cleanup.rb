@@ -53,11 +53,12 @@ module Trakable
     def enforce_max_traks
       max = record.trakable_options[:max_traks]
       return unless max
+      return unless record.respond_to?(:traks)
 
-      # In a real ActiveRecord implementation, this would be:
-      # excess_traks = record.traks.order(created_at: :desc).offset(max)
-      # excess_traks.destroy_all
-      true
+      traks = record.traks
+      return unless traks.respond_to?(:where)
+
+      traks.order(created_at: :desc).offset(max).delete_all
     end
   end
 end
