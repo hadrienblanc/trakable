@@ -40,21 +40,7 @@ Run the migration:
 $ rails db:migrate
 ```
 
-### 2. Create the Trak model
-
-Create `app/models/trak.rb`:
-
-```ruby
-class Trak < ApplicationRecord
-  self.table_name = 'traks'
-
-  serialize :object, coder: JSON
-  serialize :changeset, coder: JSON
-  serialize :metadata, coder: JSON
-end
-```
-
-### 3. Add tracking to your models
+### 2. Add tracking to your models
 
 ```ruby
 class Post < ApplicationRecord
@@ -64,7 +50,7 @@ class Post < ApplicationRecord
 end
 ```
 
-### 4. Set whodunnit in your controller
+### 3. Set whodunnit in your controller
 
 ```ruby
 class ApplicationController < ActionController::Base
@@ -240,7 +226,7 @@ destroy_trak.revert!  # => Creates new record with same attributes but new ID
 | `whodunnit` | The user who made the change (polymorphic) |
 | `event` | The event type: "create", "update", or "destroy" |
 | `changeset` | Hash of changed attributes with [old, new] values |
-| `object` | Full state before the change |
+| `object` | Changed attributes before the change (delta for updates, full snapshot for destroys) |
 | `create?` | True if this is a create event |
 | `update?` | True if this is an update event |
 | `destroy?` | True if this is a destroy event |

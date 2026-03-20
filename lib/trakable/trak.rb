@@ -4,34 +4,63 @@ module Trakable
   # Trak model for storing audit records.
   # Each trak represents a single state change event on a tracked item.
   #
-  # This is a plain Ruby class that can be used as a template for the host app's
-  # ActiveRecord model. The host app should create:
+  # Inherits from ActiveRecord::Base when available (Rails apps),
+  # otherwise works as a plain Ruby object (testing, non-AR contexts).
   #
-  #   class Trak < ApplicationRecord
-  #     self.table_name = 'traks'
-  #     serialize :object, coder: JSON
-  #     serialize :changeset, coder: JSON
-  #     serialize :metadata, coder: JSON
-  #   end
-  #
-  class Trak
+  class Trak < (defined?(ActiveRecord::Base) ? ActiveRecord::Base : Object)
     include Revertable
 
     EVENTS = %w[create update destroy].freeze
 
-    ATTRS = %i[id item_type item_id event object changeset
-               whodunnit_type whodunnit_id metadata created_at].freeze
+    if defined?(ActiveRecord::Base) && self < ActiveRecord::Base
+      require 'json'
 
-    # Pre-computed ivar symbols to avoid string interpolation in initialize
-    ATTR_IVARS = ATTRS.each_with_object({}) { |a, h| h[a] = :"@#{a}" }.freeze
+      self.table_name = 'traks'
 
-    attr_accessor(*ATTRS)
+      serialize :object, coder: JSON
+      serialize :changeset, coder: JSON
+      serialize :metadata, coder: JSON
 
-    class << self
-      def table_name
+      belongs_to :item, polymorphic: true, optional: true
+      belongs_to :whodunnit, polymorphic: true, optional: true
+    else
+      ATTRS = %i[id item_type item_id event object changeset
+                 whodunnit_type whodunnit_id metadata created_at].freeze
+
+      # Pre-computed ivar symbols to avoid string interpolation in initialize
+      ATTR_IVARS = ATTRS.each_with_object({}) { |a, h| h[a] = :"@#{a}" }.freeze
+
+      attr_accessor(*ATTRS)
+
+      def initialize(attrs = {})
+        attrs.each do |key, value|
+          ivar = ATTR_IVARS[key]
+          instance_variable_set(ivar, value) if ivar
+        end
+      end
+
+      def self.table_name
         'traks'
       end
 
+      def item
+        return nil unless item_type && item_id
+
+        @item ||= item_type.constantize.find_by(id: item_id)
+      rescue NameError
+        nil
+      end
+
+      def whodunnit
+        return nil unless whodunnit_type && whodunnit_id
+
+        @whodunnit ||= whodunnit_type.constantize.find_by(id: whodunnit_id)
+      rescue NameError
+        nil
+      end
+    end
+
+    class << self
       def build(item:, event:, changeset:, object: nil, whodunnit: nil, metadata: nil)
         new(
           item_type: item.class.name,
@@ -45,29 +74,6 @@ module Trakable
           created_at: Time.now
         )
       end
-    end
-
-    def initialize(attrs = {})
-      attrs.each do |key, value|
-        ivar = ATTR_IVARS[key]
-        instance_variable_set(ivar, value) if ivar
-      end
-    end
-
-    def item
-      return nil unless item_type && item_id
-
-      @item ||= item_type.constantize.find_by(id: item_id)
-    rescue NameError
-      nil
-    end
-
-    def whodunnit
-      return nil unless whodunnit_type && whodunnit_id
-
-      @whodunnit ||= whodunnit_type.constantize.find_by(id: whodunnit_id)
-    rescue NameError
-      nil
     end
 
     def create?

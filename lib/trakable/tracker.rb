@@ -61,7 +61,7 @@ module Trakable
     end
 
     def build_trak
-      Trak.build(
+      trak = Trak.build(
         item: record,
         event: event,
         changeset: changeset,
@@ -69,6 +69,8 @@ module Trakable
         whodunnit: whodunnit,
         metadata: metadata
       )
+      trak.save! if defined?(ActiveRecord::Base) && trak.is_a?(ActiveRecord::Base)
+      trak
     end
 
     def object_state

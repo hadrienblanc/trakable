@@ -51,9 +51,8 @@ module Trakable
       true
     end
 
-    # Resolve the Trak class — host app's AR model if available, fallback to gem's PORO
     def self.resolve_trak_class
-      Object.const_defined?(:Trak) ? Object.const_get(:Trak) : Trakable::Trak
+      Trakable::Trak
     end
     private_class_method :resolve_trak_class
 
