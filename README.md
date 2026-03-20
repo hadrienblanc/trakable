@@ -62,14 +62,6 @@ Trakable.configure do |config|
 end
 ```
 
-Or override per-controller:
-
-```ruby
-class AdminController < ApplicationController
-  set_trakable_whodunnit :current_admin
-end
-```
-
 ## Configuration
 
 ### Global configuration
@@ -282,10 +274,9 @@ destroy_trak.revert!  # => Creates new record with same attributes but new ID
 
 ### Trakable::Controller (auto-included via Railtie)
 
-| Method | Description |
+| Option | Description |
 |--------|-------------|
-| `set_trakable_whodunnit(method)` | Override whodunnit method for this controller |
-| `config.whodunnit_method` | Global default (default: `:current_user`) |
+| `config.whodunnit_method` | Controller method that returns the current user (default: `:current_user`) |
 
 ## Performance Tips
 

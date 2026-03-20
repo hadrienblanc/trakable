@@ -44,10 +44,6 @@ Lint/MissingSuper:
   Exclude:
     - lib/trakable/trak.rb
 
-Naming/AccessorMethodName:
-  Exclude:
-    - lib/trakable/controller.rb
-
 Naming/MethodParameterName:
   Exclude:
     - test/**/*

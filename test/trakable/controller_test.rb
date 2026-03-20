@@ -11,14 +11,11 @@ class ControllerTest < Minitest::Test
 
   def teardown
     Trakable::Context.reset!
+    Trakable.configuration.whodunnit_method = :current_user
   end
 
   def test_controller_includes_around_action
     assert MockController.respond_to?(:around_action)
-  end
-
-  def test_default_whodunnit_method_is_current_user
-    assert_equal :current_user, MockController.trakable_whodunnit_method
   end
 
   def test_sets_whodunnit_from_current_user
@@ -45,30 +42,6 @@ class ControllerTest < Minitest::Test
     @controller.perform_action do
       assert_nil Trakable::Context.whodunnit
     end
-  end
-
-  def test_custom_whodunnit_method
-    custom_controller = MockCustomController.new
-    admin = MockUser.new(99)
-    custom_controller.current_admin = admin
-
-    custom_controller.perform_action do
-      assert_equal admin, Trakable::Context.whodunnit
-    end
-  end
-
-  def test_set_trakable_whodunnit_class_method_sets_custom_method
-    controller = MockControllerWithCustomMethod.new
-    admin = MockUser.new(42)
-    controller.current_admin = admin
-
-    controller.perform_action do
-      assert_equal admin, Trakable::Context.whodunnit
-    end
-  end
-
-  def test_set_trakable_whodunnit_returns_configured_method
-    assert_equal :current_admin, MockControllerWithCustomMethod.trakable_whodunnit_method
   end
 
   def test_resets_whodunnit_on_exception
@@ -110,12 +83,15 @@ class ControllerTest < Minitest::Test
     end
   end
 
-  def test_trakable_whodunnit_method_returns_default_when_not_set
-    assert_equal :current_user, MockControllerWithoutAroundAction.trakable_whodunnit_method
-  end
+  def test_reads_whodunnit_method_from_global_config
+    Trakable.configuration.whodunnit_method = :current_admin
+    controller = MockControllerWithAdmin.new
+    admin = MockUser.new(99)
+    controller.current_admin = admin
 
-  def test_default_reads_from_global_config
-    assert_equal Trakable.configuration.whodunnit_method, MockController.trakable_whodunnit_method
+    controller.perform_action do
+      assert_equal admin, Trakable::Context.whodunnit
+    end
   end
 end
 
@@ -138,7 +114,7 @@ class MockController
   end
 
   def perform_action(&)
-    set_trakable_whodunnit(&)
+    _set_trakable_whodunnit(&)
   end
 end
 
@@ -148,39 +124,12 @@ class MockControllerWithoutAroundAction
 
   attr_accessor :current_user
 
-  # No around_action method - tests the respond_to? branch
-
   def perform_action(&)
-    set_trakable_whodunnit(&)
+    _set_trakable_whodunnit(&)
   end
 end
 
-class MockCustomController
-  attr_accessor :current_admin
-
-  # Manually include concern behavior
-  def self.trakable_whodunnit_method
-    :current_admin
-  end
-
-  def self.around_action(_method_name)
-    # Stub
-  end
-
-  def perform_action(&)
-    set_trakable_whodunnit(&)
-  end
-
-  private
-
-  def set_trakable_whodunnit(&)
-    user = send(self.class.trakable_whodunnit_method)
-    Trakable.with_user(user, &)
-  end
-end
-
-# Controller that actually uses set_trakable_whodunnit class method
-class MockControllerWithCustomMethod
+class MockControllerWithAdmin
   include Trakable::Controller
 
   attr_accessor :current_admin
@@ -189,10 +138,7 @@ class MockControllerWithCustomMethod
     # Stub
   end
 
-  # Call the class method to set custom whodunnit method
-  set_trakable_whodunnit :current_admin
-
   def perform_action(&)
-    set_trakable_whodunnit(&)
+    _set_trakable_whodunnit(&)
   end
 end
