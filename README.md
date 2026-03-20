@@ -297,17 +297,9 @@ This uses zlib under the hood and can reduce storage by 60-80% for large payload
 | Table name | versions | traks |
 | Updated_at | Yes | No (immutable) |
 
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/my-feature`)
-3. Commit your changes (`git commit -am 'Add my feature'`)
-4. Push to the branch (`git push origin feature/my-feature`)
-5. Create a Pull Request
-
 ## Ruby Compatibility
 
-166 tests, 321 assertions, 0 failures, 0 errors on all versions.
+171 tests, 331 assertions, 0 failures, 0 errors on all versions.
 
 | Metric | 3.2.10 | 3.3.5 | 3.3.10 | 3.4.9 | 4.0.1 | 4.0.2 |
 |---|---|---|---|---|---|---|
@@ -321,6 +313,16 @@ This uses zlib under the hood and can reduce storage by 60-80% for large payload
 | **storage_wide_object_bytes** | 35 | 35 | 35 | 35 | 35 | 35 |
 | **integration_total_allocs** | 253,024 | 243,592 | 234,909 | 138,966 | 135,954 | 133,413 |
 
+`integration_total_allocs` includes system overhead (SimpleCov, ActiveSupport, Minitest). The variance across Ruby versions reflects internal runtime optimizations, not Trakable code. Actual scenario code accounts for ~55k allocs across all 37 scenarios.
+
+The gem is lean:
+
+- **9-10 allocs** per operation (the incompressible minimum to create a Trak + its hashes)
+- **2-3us** per tracking call
+- **35 bytes** of storage for an update on a 20-column model (delta)
+- **0 unnecessary runtime dependency** (`require 'json'` removed, Controller autoloaded)
+- **Thread-safe** configuration and controller
+
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+The gem is available as open source under the terms of the [MIT License](./LICENSE).
