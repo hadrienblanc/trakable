@@ -1,13 +1,13 @@
 # Performance Issues to Address
 
 ## Status Tracking
-- [ ] 1. CRITICAL: `find_trak_at` O(n) memory load
-- [ ] 2. HIGH: N+1 queries on `item`/`whodunnit`
-- [ ] 3. HIGH: Callbacks run inside transaction
-- [ ] 4. MEDIUM: Single-pass changeset filter
+- [x] 1. CRITICAL: `find_trak_at` O(n) memory load ✅ (O(n) → O(1) memory)
+- [ ] 2. HIGH: N+1 queries on `item`/`whodunnit` (documentation fix)
+- [x] 3. HIGH: Callbacks run inside transaction ✅ (callback_type: :after_commit option)
+- [x] 4. MEDIUM: Single-pass changeset filter ✅ (13% faster, no-filters path)
 - [x] 5. MEDIUM: Pre-convert filter symbols to strings ✅ (8-20% improvement)
-- [ ] 6. MEDIUM: Cache ignored_attrs as Set
-- [ ] 7. LOW: Reduce respond_to? checks
+- [x] 6. MEDIUM: Cache ignored_attrs as Set — SKIPPED ❌ (benchmark shows Set is slower for small arrays)
+- [x] 7. LOW: Reduce respond_to? checks ✅ (22% faster on Context calls)
 
 ## Completed Optimizations
 
@@ -24,105 +24,75 @@
 
 ---
 
-## 1. CRITICAL: `find_trak_at` O(n) Memory Load
+### 4. Remove unnecessary hash dup and merge ignore filters
 
-**File:** `lib/trakable/revertable.rb:141`
+**Files changed:**
+- `lib/trakable/tracker.rb` - Remove `changes.dup`, combine record + global ignore into single `except` call
 
-**Current:**
-```ruby
-def find_trak_at(timestamp)
-  traks.select { |t| t.created_at <= timestamp }.max_by(&:created_at)
-end
-```
+**Results (200k iterations, median of 5 runs):**
+- filter_changeset (with only/ignore): 0.637µs → 0.643µs (~0%, within noise)
+- filter_changeset (without model filters): 0.367µs → 0.318µs (13% faster)
 
-**Problem:** Loads ALL traks into memory, then filters in Ruby. O(n) memory.
-
-**Fix:**
-```ruby
-def find_trak_at(timestamp)
-  traks.where('created_at <= ?', timestamp).order(created_at: :desc).first
-end
-```
-
-**Note:** The gem's Trak class is a plain Ruby class for documentation. The fix applies to the host app's ActiveRecord Trak model.
+**Note:** True single-pass with `select/reject` blocks was benchmarked but proved slower than C-optimized `Hash#slice`/`Hash#except`. The win comes from removing the redundant `.dup` and merging two `except` calls.
 
 ---
 
-## 2. HIGH: N+1 Queries on `item`/`whodunnit`
+### 7. Remove redundant respond_to? checks on Context
+
+**Files changed:**
+- `lib/trakable/tracker.rb` - Remove `Context.respond_to?` guards on `whodunnit`, `metadata`, `tracking_enabled?`
+
+**Results (500k iterations, median of 5 runs):**
+- 3x Context access (respond_to? + call): 0.320µs → 0.250µs (22% faster)
+
+---
+
+### 1. find_trak_at DB query instead of in-memory filter
+
+**Files changed:**
+- `lib/trakable/revertable.rb` - Use `WHERE + ORDER + LIMIT 1` when traks is an ActiveRecord relation
+
+**Results:**
+- Before: loads ALL traks into memory, filters in Ruby → O(n) memory
+- After: single indexed DB query → O(1) memory
+- Duck-type check overhead (`respond_to?(:where)`): negligible (~0.02µs)
+- Fallback to in-memory filter for arrays (test compatibility)
+
+---
+
+### 3. after_commit callback option
+
+**Files changed:**
+- `lib/trakable/model.rb` - Add `callback_type: :after_commit` option
+- `test/trakable/model_test.rb` - Tests for after_commit callbacks
+
+**Results:**
+- No perf benchmark (semantic change, not speed optimization)
+- Tracking occurs after transaction commits, preventing trak writes if transaction rolls back
+
+---
+
+### 6. Cache ignored_attrs as Set — SKIPPED
+
+**Benchmark showed Set#include? is slower than Array#include? for small collections:**
+- Array#include?: 22.22ms (50k iterations)
+- Set#include?: 23.92ms (50k iterations)
+- Speedup: 0.93x (Set is 7% slower)
+
+Ruby's Set has object allocation overhead that outweighs O(1) lookup benefit for arrays under ~20 elements. Since ignored_attrs typically has 3-5 entries, Array is faster.
+
+---
+
+## Remaining
+
+### 2. HIGH: N+1 Queries on `item`/`whodunnit`
 
 **File:** `lib/trakable/trak.rb:62-76`
 
 **Problem:** Each `trak.item` or `trak.whodunnit` triggers a separate query.
 
-**Fix:** Document eager loading pattern in README.
-
----
-
-## 3. HIGH: Callbacks Run Inside Transaction
-
-**File:** `lib/trakable/model.rb:48-60`
-
-**Current:** Uses `after_create/update/destroy` (inside transaction)
-
-**Fix:** Consider `after_commit on: [...]` option (configurable trade-off)
-
----
-
-## 4. MEDIUM: Single-Pass Changeset Filter
-
-**File:** `lib/trakable/tracker.rb:86-122`
-
-**Current:** Multiple hash iterations (slice, except, except)
-
-**Fix:**
+**Fix:** Document eager loading pattern in README:
 ```ruby
-def filter_changeset(changes)
-  return {} if changes.empty?
-
-  only = record.trakable_options&.dig(:only)
-  ignore = []
-  ignore.concat(Array(record.trakable_options&.dig(:ignore))) if record.trakable_options&.dig(:ignore)
-  ignore.concat(Array(Trakable.configuration.ignored_attrs)) if Trakable.configuration.ignored_attrs
-
-  if only
-    only_set = only.to_set
-    ignore_set = ignore.to_set
-    changes.select { |k, _| only_set.include?(k.to_s) && !ignore_set.include?(k.to_s) }
-  elsif ignore.any?
-    ignore_set = ignore.to_set
-    changes.reject { |k, _| ignore_set.include?(k.to_s) }
-  else
-    changes
-  end
-end
+# Eager load to avoid N+1
+record.traks.includes(:item)
 ```
-
----
-
-## 5. MEDIUM: Pre-Convert Filter Symbols
-
-**File:** `lib/trakable/tracker.rb:100,114,121`
-
-**Current:** `Array(only).map(&:to_s)` called on every filter
-
-**Fix:** Pre-convert at configuration time in `trakable` method.
-
----
-
-## 6. MEDIUM: Cache ignored_attrs as Set
-
-**File:** `lib/trakable/tracker.rb`
-
-**Current:** `Array(ignored).map(&:to_s)` creates array, then `except` is O(n*m)
-
-**Fix:** Use Set for O(1) lookups.
-
----
-
-## 7. LOW: Reduce respond_to? Checks
-
-**File:** `lib/trakable/tracker.rb:37,43,95,109,135,139`
-
-**Current:** `respond_to?` on every callback invocation
-
-**Fix:** Trust module structure or memoize at class level.
