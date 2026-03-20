@@ -11,7 +11,7 @@ class Trakable::ConfigurationTest < Minitest::Test
     assert @config.enabled
   end
 
-  def test_ignored_attrs_defaults_to_created_at_and_updated_at
-    assert_equal %w[created_at updated_at], @config.ignored_attrs
+  def test_ignored_attrs_defaults_to_created_at_updated_at_and_id
+    assert_equal %w[created_at updated_at id], @config.ignored_attrs
   end
 end
