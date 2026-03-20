@@ -305,6 +305,22 @@ This uses zlib under the hood and can reduce storage by 60-80% for large payload
 4. Push to the branch (`git push origin feature/my-feature`)
 5. Create a Pull Request
 
+## Ruby Compatibility
+
+166 tests, 321 assertions, 0 failures, 0 errors on all versions.
+
+| Metric | 3.2.10 | 3.3.5 | 3.3.10 | 3.4.9 | 4.0.1 | 4.0.2 |
+|---|---|---|---|---|---|---|
+| **allocs_create** | 8 | 9 | 9 | 9 | 8 | 8 |
+| **allocs_update** | 9 | 10 | 10 | 10 | 9 | 9 |
+| **allocs_destroy** | 8 | 9 | 9 | 9 | 8 | 8 |
+| **boot_time_us** | 40,890 | 56,041 | 49,047 | 56,931 | 56,901 | 58,085 |
+| **speed_create_us** | 2.94 | 3.25 | 3.27 | 3.83 | 3.26 | 3.09 |
+| **speed_update_us** | 3.20 | 3.67 | 3.32 | 4.08 | 3.42 | 3.39 |
+| **speed_destroy_us** | 2.48 | 2.55 | 2.24 | 3.00 | 2.30 | 2.05 |
+| **storage_wide_object_bytes** | 35 | 35 | 35 | 35 | 35 | 35 |
+| **integration_total_allocs** | 253,024 | 243,592 | 234,909 | 138,966 | 135,954 | 133,413 |
+
 ## License
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
