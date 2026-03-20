@@ -41,12 +41,21 @@ module Trakable
       retention = retention_period || model_class.trakable_options[:retention]
       return nil unless retention
 
-      # In a real implementation, this would query the database:
-      # Trakable::Trak.where(item_type: model_class.to_s)
-      #              .where('created_at < ?', retention.seconds.ago)
-      #              .destroy_all
+      trak_class = resolve_trak_class
+      return true unless trak_class.respond_to?(:where)
+
+      cutoff = Time.now - retention
+      trak_class.where(item_type: model_class.to_s)
+                .where('created_at < ?', cutoff)
+                .delete_all
       true
     end
+
+    # Resolve the Trak class — host app's AR model if available, fallback to gem's PORO
+    def self.resolve_trak_class
+      Object.const_defined?(:Trak) ? Object.const_get(:Trak) : Trakable::Trak
+    end
+    private_class_method :resolve_trak_class
 
     private
 
