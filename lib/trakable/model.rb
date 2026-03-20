@@ -21,6 +21,9 @@ module Trakable
 
       # has_many :traks association
       has_many :traks, as: :item, class_name: 'Trakable::Trak', dependent: :nullify
+
+      # Include revertable methods
+      include ModelRevertable
     end
 
     class_methods do
