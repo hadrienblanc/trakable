@@ -25,7 +25,9 @@ module Trakable
       return unless tracking_enabled?
       return if skip?
 
-      build_trak
+      trak = build_trak
+      Cleanup.run(record) if trak
+      trak
     end
 
     private

@@ -34,6 +34,7 @@ module Trakable
   end
 end
 
+require_relative 'trakable/cleanup'
 require_relative 'trakable/config'
 require_relative 'trakable/context'
 require_relative 'trakable/controller'
