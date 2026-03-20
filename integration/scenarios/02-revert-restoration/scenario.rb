@@ -9,6 +9,16 @@ require_relative '../scenario_runner'
 class MockPost
   attr_accessor :id, :title, :body
 
+  @records = {}
+
+  class << self
+    attr_accessor :records
+
+    def find_by(id:)
+      records[id]
+    end
+  end
+
   def initialize(id = nil)
     @id = id
     @title = 'Current Title'
@@ -34,6 +44,9 @@ end
 
 run_scenario 'Revert and Restoration' do
   puts 'Step 1: Testing reify for update event...'
+
+  # Register a live record so reify can merge delta with current state
+  MockPost.records[1] = MockPost.new(1)
 
   trak = Trakable::Trak.new(
     item_type: 'MockPost',

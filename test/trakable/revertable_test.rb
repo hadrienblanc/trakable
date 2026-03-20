@@ -77,6 +77,8 @@ class RevertableTest < Minitest::Test
   end
 
   def test_reify_returns_non_persisted_record_for_update_event
+    MockPost.records[1] = MockPost.new(1, 'Current Title', 'Current Body')
+
     trak = Trakable::Trak.new(
       item_type: 'MockPost',
       item_id: 1,
@@ -108,6 +110,8 @@ class RevertableTest < Minitest::Test
   end
 
   def test_reify_ignores_unknown_attributes
+    MockPost.records[1] = MockPost.new(1, 'Current', 'Body')
+
     trak = Trakable::Trak.new(
       item_type: 'MockPost',
       item_id: 1,
@@ -125,11 +129,22 @@ class RevertableTest < Minitest::Test
     trak = Trakable::Trak.new(
       item_type: 'NonExistentClass',
       item_id: 1,
-      event: 'update',
+      event: 'destroy',
       object: { 'title' => 'Title' }
     )
 
     assert_raises(RuntimeError) { trak.reify }
+  end
+
+  def test_reify_returns_nil_for_update_with_unknown_model_class
+    trak = Trakable::Trak.new(
+      item_type: 'NonExistentClass',
+      item_id: 1,
+      event: 'update',
+      object: { 'title' => 'Title' }
+    )
+
+    assert_nil trak.reify
   end
 
   # revert! for create event
@@ -329,6 +344,70 @@ class RevertableTest < Minitest::Test
     refute result
   end
 
+  # reify edge case: deleted item with delta storage
+  def test_reify_returns_nil_for_update_when_item_deleted
+    # Simulates delta storage: object only has changed attrs
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 999,
+      event: 'update',
+      object: { 'title' => 'Old Title' }
+    )
+    # item_id 999 does not exist in MockPost.records → item returns nil
+
+    assert_nil trak.reify
+  end
+
+  def test_reify_works_for_update_when_item_exists
+    post = MockPost.new(1, 'Current Title', 'Current Body')
+    MockPost.records[1] = post
+
+    # Delta: only title changed
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 1,
+      event: 'update',
+      object: { 'title' => 'Old Title' }
+    )
+
+    reified = trak.reify
+
+    assert_instance_of MockPost, reified
+    assert_equal 'Old Title', reified.title
+    assert_equal 'Current Body', reified.body
+    refute reified.persisted?
+  end
+
+  def test_reify_works_for_destroy_when_item_deleted
+    # Destroy traks store full snapshot, so reify works without live item
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 999,
+      event: 'destroy',
+      object: { 'title' => 'Deleted', 'body' => 'Deleted Body' }
+    )
+
+    reified = trak.reify
+
+    assert_instance_of MockPost, reified
+    assert_equal 'Deleted', reified.title
+    assert_equal 'Deleted Body', reified.body
+  end
+
+  def test_revert_update_returns_false_when_item_deleted_with_delta
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 999,
+      event: 'update',
+      object: { 'title' => 'Old Title' }
+    )
+    trak.define_singleton_method(:item) { nil }
+
+    result = trak.revert!
+
+    refute result
+  end
+
   # reify edge case: empty object
   def test_reify_returns_nil_for_empty_object
     trak = Trakable::Trak.new(
@@ -343,6 +422,8 @@ class RevertableTest < Minitest::Test
 
   # reify with record that doesn't respond to attribute
   def test_reify_skips_unknown_attributes_on_model
+    MockPost.records[1] = MockPost.new(1, 'Current', 'Body')
+
     trak = Trakable::Trak.new(
       item_type: 'MockPost',
       item_id: 1,

@@ -28,10 +28,15 @@ module Trakable
       return nil if create?
       return nil if object.nil? || object.empty?
 
+      current = item
+
+      # For update traks, delta storage requires the current record
+      # to reconstruct full previous state. Without it, return nil.
+      return nil if update? && current.nil?
+
       model_class.new.tap do |record|
-        # Start with current attributes if the item still exists
-        if (current = item)
-          current.attributes.each do |attr, val|
+        if current
+          current.attributes.except('id').each do |attr, val|
             record.write_attribute(attr, val) if record.respond_to?(attr)
           end
         end

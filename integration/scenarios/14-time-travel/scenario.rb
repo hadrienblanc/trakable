@@ -9,6 +9,16 @@ require_relative '../scenario_runner'
 class MockTimePost
   attr_accessor :id, :title, :body, :created_at
 
+  @records = {}
+
+  class << self
+    attr_accessor :records
+
+    def find_by(id:)
+      records[id]
+    end
+  end
+
   def initialize(id: nil, title: '', body: '', created_at: nil)
     @id = id
     @title = title
@@ -26,6 +36,10 @@ class MockTimePost
 
   def respond_to?(method, include_all: false)
     %i[id title body created_at].include?(method.to_sym) || super
+  end
+
+  def attributes
+    { 'id' => @id, 'title' => @title, 'body' => @body, 'created_at' => @created_at }
   end
 end
 
@@ -91,6 +105,9 @@ run_scenario 'Time Travel / Point in Time' do
   puts '   ✓ exact timestamp returns correct trak state'
 
   puts 'Test 59: record.traks[n].reify returns a non-persisted record with that state...'
+
+  # Register a live record so reify can merge delta with current state
+  MockTimePost.records[1] = MockTimePost.new(id: 1, title: 'Latest', body: 'Latest Body')
 
   trak = traks[1] # The update with "Old Title"
   reified = trak.reify
