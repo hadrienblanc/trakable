@@ -25,8 +25,11 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
 
-      - name: Run tests
+      - name: Run unit tests
         run: bundle exec rake test
+
+      - name: Run integration tests
+        run: bundle exec rake test_integration
 
       - name: Run RuboCop
         run: bundle exec rubocop
