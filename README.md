@@ -1,5 +1,7 @@
 # Trakable
 
+[![CI](https://github.com/hadrienblanc/trakable/actions/workflows/ci.yml/badge.svg)](https://github.com/hadrienblanc/trakable/actions/workflows/ci.yml)
+
 Audit logging and version tracking for ActiveRecord models.
 
 ## Installation
@@ -319,32 +321,6 @@ This uses zlib under the hood and can reduce storage by 60-80% for large payload
 | Serialization | YAML default | JSON only |
 | Table name | versions | traks |
 | Updated_at | Yes | No (immutable) |
-
-## Ruby Compatibility
-
-171 tests, 331 assertions, 0 failures, 0 errors on all versions.
-
-| Metric | 3.2.10 | 3.3.5 | 3.3.10 | 3.4.9 | 4.0.1 | 4.0.2 |
-|---|---|---|---|---|---|---|
-| **allocs_create** | 8 | 9 | 9 | 9 | 8 | 8 |
-| **allocs_update** | 9 | 10 | 10 | 10 | 9 | 9 |
-| **allocs_destroy** | 8 | 9 | 9 | 9 | 8 | 8 |
-| **boot_time_us** | 40,890 | 56,041 | 49,047 | 56,931 | 56,901 | 58,085 |
-| **speed_create_us** | 2.94 | 3.25 | 3.27 | 3.83 | 3.26 | 3.09 |
-| **speed_update_us** | 3.20 | 3.67 | 3.32 | 4.08 | 3.42 | 3.39 |
-| **speed_destroy_us** | 2.48 | 2.55 | 2.24 | 3.00 | 2.30 | 2.05 |
-| **storage_wide_object_bytes** | 35 | 35 | 35 | 35 | 35 | 35 |
-| **integration_total_allocs** | 253,024 | 243,592 | 234,909 | 138,966 | 135,954 | 133,413 |
-
-`integration_total_allocs` includes system overhead (SimpleCov, ActiveSupport, Minitest). The variance across Ruby versions reflects internal runtime optimizations, not Trakable code. Actual scenario code accounts for ~55k allocs across all 37 scenarios.
-
-The gem is lean:
-
-- **9-10 allocs** per operation (the incompressible minimum to create a Trak + its hashes)
-- **2-3us** per tracking call
-- **35 bytes** of storage for an update on a 20-column model (delta)
-- **0 unnecessary runtime dependency** (`require 'json'` removed, Controller autoloaded)
-- **Thread-safe** configuration and controller
 
 ## License
 
