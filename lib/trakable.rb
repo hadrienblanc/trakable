@@ -5,9 +5,11 @@ require_relative 'trakable/version'
 # Trakable provides audit logging and version tracking for ActiveRecord models.
 # It offers polymorphic whodunnit tracking, changesets, and built-in retention.
 module Trakable
+  @configuration = nil
+
   class << self
     # Returns the global configuration.
-    # Thread-safe after initial access (configure at app boot).
+    # Eagerly initialized after require to eliminate thread-safety race.
     def configuration
       @configuration ||= Configuration.new
     end
@@ -44,3 +46,6 @@ require_relative 'trakable/trak'
 require_relative 'trakable/tracker'
 
 require_relative 'trakable/railtie' if defined?(Rails::Railtie)
+
+# Eager-initialize configuration to eliminate thread-safety race on first access
+Trakable.configuration
