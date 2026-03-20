@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'json'
-
 module Trakable
   # Trak model for storing audit records.
   # Each trak represents a single state change event on a tracked item.
