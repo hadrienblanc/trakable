@@ -34,8 +34,6 @@ module Trakable
 
     def tracking_enabled?
       return false unless Trakable.enabled?
-      return true unless Context.respond_to?(:tracking_enabled?)
-
       Context.tracking_enabled?
     end
 
@@ -86,44 +84,42 @@ module Trakable
     def filter_changeset(changes)
       return {} if changes.empty?
 
-      result = changes.dup
-      result = apply_only_filter(result)
-      apply_ignore_filters(result)
+      only = only_attrs
+      ignore = ignore_attrs
+
+      if only
+        only_set = only.to_set
+        ignore_set = ignore.to_set
+        changes.select { |k, _| only_set.include?(k) && !ignore_set.include?(k) }
+      elsif ignore.any?
+        ignore_set = ignore.to_set
+        changes.reject { |k, _| ignore_set.include?(k) }
+      else
+        changes
+      end
     end
 
-    def apply_only_filter(result)
-      return result unless record.respond_to?(:trakable_options)
-
+    def only_attrs
+      return nil unless record.respond_to?(:trakable_options)
       only = record.trakable_options[:only]
-      return result unless only
-
+      return nil unless only
       # Convert to strings if needed (defensive - should be pre-converted by Model#trakable)
-      only_strings = only.first.is_a?(String) ? only : only.map(&:to_s)
-      result.slice(*only_strings)
+      only.first.is_a?(String) ? only : only.map(&:to_s)
     end
 
-    def apply_ignore_filters(result)
-      result = apply_record_ignore_filter(result)
-      apply_global_ignore_filter(result)
-    end
-
-    def apply_record_ignore_filter(result)
-      return result unless record.respond_to?(:trakable_options)
-
-      ignored = record.trakable_options[:ignore]
-      return result unless ignored
-
-      # Convert to strings if needed (defensive - should be pre-converted by Model#trakable)
-      ignored_strings = ignored.first.is_a?(String) ? ignored : ignored.map(&:to_s)
-      result.except(*ignored_strings)
-    end
-
-    def apply_global_ignore_filter(result)
-      global_ignored = Trakable.configuration.ignored_attrs
-      return result unless global_ignored&.any?
-
-      # Configuration.ignored_attrs is pre-converted to strings
-      result.except(*global_ignored)
+    def ignore_attrs
+      ignore = []
+      if record.respond_to?(:trakable_options) && record.trakable_options[:ignore]
+        ignored = record.trakable_options[:ignore]
+        # Convert to strings if needed
+        ignored_strings = ignored.first.is_a?(String) ? ignored : ignored.map(&:to_s)
+        ignore.concat(ignored_strings)
+      end
+      if Trakable.configuration.ignored_attrs
+        # Configuration.ignored_attrs is pre-converted to strings
+        ignore.concat(Trakable.configuration.ignored_attrs)
+      end
+      ignore
     end
 
     def build_object_from_previous
@@ -137,11 +133,11 @@ module Trakable
     end
 
     def whodunnit
-      Context.whodunnit if Context.respond_to?(:whodunnit)
+      Context.whodunnit
     end
 
     def metadata
-      Context.metadata if Context.respond_to?(:metadata)
+      Context.metadata
     end
   end
 end
