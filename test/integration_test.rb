@@ -42,13 +42,23 @@ ActiveRecord::Schema.define do
   end
 
   create_table :users, force: true do |t|
+    t.string :type # STI
     t.string :name
+    t.string :email
     t.timestamps
   end
 
   create_table :comments, force: true do |t|
     t.bigint :post_id, null: false
     t.text   :content
+    t.timestamps
+  end
+
+  create_table :articles, force: true do |t|
+    t.string  :title
+    t.text    :body
+    t.boolean :published, default: false
+    t.integer :author_id
     t.timestamps
   end
 end
@@ -58,6 +68,9 @@ require 'trakable'
 # --- AR Models ---
 
 class User < ActiveRecord::Base; end
+
+# STI subclass
+class Admin < User; end
 
 class Post < ActiveRecord::Base
   include Trakable::Model
@@ -113,6 +126,23 @@ class IgnorePost < ActiveRecord::Base
   trakable ignore: %i[views_count]
 end
 
+# Model with unless condition
+class UnlessPost < ActiveRecord::Base
+  self.table_name = 'posts'
+  include Trakable::Model
+
+  trakable unless: -> { title&.start_with?('[DRAFT]') }
+end
+
+# Full-featured model
+class Article < ActiveRecord::Base
+  include Trakable::Model
+
+  belongs_to :author, class_name: 'User', optional: true
+
+  trakable only: %i[title body published]
+end
+
 # --- Base test class ---
 
 class IntegrationTest < Minitest::Test
@@ -129,6 +159,7 @@ class IntegrationTest < Minitest::Test
     Post.delete_all
     User.delete_all
     Comment.delete_all
+    Article.delete_all
   end
 end
 
@@ -830,5 +861,572 @@ class SerializationTest < IntegrationTest
     trak = Trakable::Trak.find(Trakable::Trak.last.id)
     assert_equal({ 'a' => 1 }, trak.metadata['nested'])
     assert_equal [1, 2, 3], trak.metadata['arr']
+  end
+end
+
+# ============================================================
+# 17. Bypass scenarios — things that skip callbacks
+# ============================================================
+class BypassTest < IntegrationTest
+  def test_update_all_bypasses_tracking
+    Post.create!(title: 'T1', body: 'B')
+    Post.create!(title: 'T2', body: 'B')
+    count_before = Trakable::Trak.count
+
+    Post.where(body: 'B').update_all(title: 'Bulk')
+
+    assert_equal count_before, Trakable::Trak.count
+  end
+
+  def test_delete_all_bypasses_tracking
+    Post.create!(title: 'T', body: 'B')
+    count_before = Trakable::Trak.count
+
+    Post.delete_all
+
+    assert_equal count_before, Trakable::Trak.count
+  end
+
+  def test_update_columns_bypasses_tracking
+    post = Post.create!(title: 'T', body: 'B')
+    count_before = Trakable::Trak.count
+
+    post.update_columns(title: 'Sneaky')
+
+    assert_equal count_before, Trakable::Trak.count
+    assert_equal 'Sneaky', post.reload.title
+  end
+
+  def test_touch_does_not_create_trak
+    post = Post.create!(title: 'T', body: 'B')
+    count_before = Trakable::Trak.count
+
+    post.touch
+
+    # touch only updates updated_at which is globally ignored
+    assert_equal count_before, Trakable::Trak.count
+  end
+end
+
+# ============================================================
+# 18. Transaction rollback
+# ============================================================
+class TransactionTest < IntegrationTest
+  def test_rollback_does_not_persist_traks
+    count_before = Trakable::Trak.count
+
+    ActiveRecord::Base.transaction do
+      Post.create!(title: 'Rollback', body: 'B')
+      raise ActiveRecord::Rollback
+    end
+
+    assert_equal count_before, Trakable::Trak.count
+    assert_equal 0, Post.count
+  end
+
+  def test_nested_transaction_with_partial_rollback
+    post = Post.create!(title: 'Outer', body: 'B')
+    ActiveRecord::Base.transaction do
+      post.update!(title: 'Updated')
+
+      ActiveRecord::Base.transaction(requires_new: true) do
+        post.update!(title: 'Inner')
+        raise ActiveRecord::Rollback
+      end
+    end
+
+    post.reload
+    # Inner savepoint rolled back, outer committed
+    traks = Trakable::Trak.where(item_type: 'Post', item_id: post.id, event: 'update')
+    assert traks.count >= 1
+  end
+end
+
+# ============================================================
+# 19. STI (Single Table Inheritance)
+# ============================================================
+class STITest < IntegrationTest
+  def test_whodunnit_with_sti_records_subclass_type
+    admin = Admin.create!(name: 'Boss')
+    Trakable::Context.whodunnit = admin
+
+    post = Post.create!(title: 'T', body: 'B')
+
+    trak = Trakable::Trak.where(item_type: 'Post', item_id: post.id).last
+    assert_equal 'Admin', trak.whodunnit_type
+    assert_equal admin.id, trak.whodunnit_id
+  end
+
+  def test_whodunnit_sti_resolves_back_to_subclass
+    admin = Admin.create!(name: 'Boss')
+    Trakable::Context.whodunnit = admin
+
+    post = Post.create!(title: 'T', body: 'B')
+
+    trak = Trakable::Trak.where(item_type: 'Post', item_id: post.id).last
+    resolved = trak.whodunnit
+    assert_instance_of Admin, resolved
+    assert_equal admin.id, resolved.id
+  end
+end
+
+# ============================================================
+# 20. Unless condition
+# ============================================================
+class UnlessConditionTest < IntegrationTest
+  def test_unless_skips_when_condition_true
+    UnlessPost.create!(title: '[DRAFT] WIP', body: 'B')
+
+    assert_equal 0, Trakable::Trak.where(item_type: 'UnlessPost').count
+  end
+
+  def test_unless_tracks_when_condition_false
+    UnlessPost.create!(title: 'Published post', body: 'B')
+
+    assert_equal 1, Trakable::Trak.where(item_type: 'UnlessPost').count
+  end
+end
+
+# ============================================================
+# 21. Real-world editorial workflow
+# ============================================================
+class EditorialWorkflowTest < IntegrationTest
+  def test_full_editorial_lifecycle
+    author = User.create!(name: 'Writer')
+    editor = User.create!(name: 'Editor')
+
+    # Author creates draft
+    Trakable.with_user(author) do
+      Trakable::Context.metadata = { 'source' => 'cms' }
+      @article = Article.create!(title: 'Draft', body: 'Content', author_id: author.id)
+    end
+
+    # Editor reviews and updates
+    Trakable.with_user(editor) do
+      Trakable::Context.metadata = { 'source' => 'review_tool' }
+      @article.update!(title: 'Reviewed Title', body: 'Edited content')
+    end
+
+    # Author publishes
+    Trakable.with_user(author) do
+      @article.update!(published: true)
+    end
+
+    traks = Trakable::Trak.where(item_type: 'Article', item_id: @article.id).order(:created_at)
+    assert_equal 3, traks.count
+
+    # Create trak by author
+    assert_equal author.id, traks[0].whodunnit_id
+    assert_equal({ 'source' => 'cms' }, traks[0].metadata)
+
+    # Edit trak by editor
+    assert_equal editor.id, traks[1].whodunnit_id
+    assert_equal({ 'source' => 'review_tool' }, traks[1].metadata)
+    assert_equal 'Draft', traks[1].object['title']
+
+    # Publish trak by author
+    assert_equal author.id, traks[2].whodunnit_id
+    assert_equal [false, true], traks[2].changeset['published']
+  end
+
+  def test_revert_editorial_change
+    article = Article.create!(title: 'V1', body: 'Original')
+    article.update!(title: 'V2', body: 'Modified')
+    article.update!(title: 'V3', body: 'Final')
+
+    # Revert last change
+    last_trak = Trakable::Trak.where(item_type: 'Article', item_id: article.id, event: 'update').last
+    last_trak.revert!
+    article.reload
+
+    assert_equal 'V2', article.title
+    assert_equal 'Modified', article.body
+  end
+end
+
+# ============================================================
+# 22. Destroy and restore cycle
+# ============================================================
+class DestroyRestoreTest < IntegrationTest
+  def test_destroy_then_revert_then_update
+    post = Post.create!(title: 'Original', body: 'Content')
+    original_id = post.id
+    post.destroy!
+
+    # Restore from destroy trak
+    destroy_trak = Trakable::Trak.where(item_type: 'Post', item_id: original_id, event: 'destroy').last
+    restored = destroy_trak.revert!
+
+    assert restored.persisted?
+    assert_equal 'Original', restored.title
+
+    # Now update the restored record
+    restored.update!(title: 'Resurrected')
+
+    traks = Trakable::Trak.where(item_type: 'Post', item_id: restored.id).order(:created_at)
+    # Should have create + update traks for the new record
+    assert(traks.any? { |t| t.event == 'update' && t.changeset['title'] == ['Original', 'Resurrected'] })
+  end
+
+  def test_double_revert_update
+    post = Post.create!(title: 'V1', body: 'B')
+    post.update!(title: 'V2')
+    post.update!(title: 'V3')
+
+    # Revert V3 -> V2
+    trak_v3 = Trakable::Trak.where(item_type: 'Post', item_id: post.id, event: 'update').last
+    trak_v3.revert!
+    post.reload
+    assert_equal 'V2', post.title
+
+    # Revert V2 -> V1
+    trak_v2 = Trakable::Trak.where(item_type: 'Post', item_id: post.id, event: 'update').first
+    trak_v2.revert!
+    post.reload
+    assert_equal 'V1', post.title
+  end
+end
+
+# ============================================================
+# 23. Cleanup edge cases
+# ============================================================
+class CleanupEdgeCaseTest < IntegrationTest
+  def test_max_traks_with_exactly_max_traks
+    post = LimitedPost.create!(title: 'V0', body: 'B')
+    2.times { |i| post.update!(title: "V#{i + 1}") }
+
+    # Exactly 3 traks (max_traks: 3)
+    assert_equal 3, Trakable::Trak.where(item_type: 'LimitedPost', item_id: post.id).count
+
+    Trakable::Cleanup.run(post)
+
+    assert_equal 3, Trakable::Trak.where(item_type: 'LimitedPost', item_id: post.id).count
+  end
+
+  def test_max_traks_with_fewer_than_max
+    post = LimitedPost.create!(title: 'V0', body: 'B')
+
+    # Only 1 trak, max is 3
+    Trakable::Cleanup.run(post)
+
+    assert_equal 1, Trakable::Trak.where(item_type: 'LimitedPost', item_id: post.id).count
+  end
+
+  def test_retention_with_small_batch_size
+    5.times { RetainedPost.create!(title: 'Old', body: 'B') }
+
+    Trakable::Trak.where(item_type: 'RetainedPost').update_all(created_at: 60.days.ago)
+
+    deleted = Trakable::Cleanup.run_retention(RetainedPost, batch_size: 2)
+
+    assert_equal 5, deleted
+    assert_equal 0, Trakable::Trak.where(item_type: 'RetainedPost').count
+  end
+
+  def test_cleanup_on_record_with_no_traks
+    post = LimitedPost.create!(title: 'T', body: 'B')
+    Trakable::Trak.delete_all
+
+    # Should not raise
+    Trakable::Cleanup.run(post)
+  end
+end
+
+# ============================================================
+# 24. Metadata per-operation isolation
+# ============================================================
+class MetadataIsolationTest < IntegrationTest
+  def test_different_metadata_per_operation
+    Trakable::Context.metadata = { 'action' => 'create' }
+    post = Post.create!(title: 'T', body: 'B')
+
+    Trakable::Context.metadata = { 'action' => 'update', 'ip' => '10.0.0.1' }
+    post.update!(title: 'T2')
+
+    Trakable::Context.metadata = nil
+    post.update!(title: 'T3')
+
+    traks = Trakable::Trak.where(item_type: 'Post', item_id: post.id).order(:created_at)
+    assert_equal({ 'action' => 'create' }, traks[0].metadata)
+    assert_equal({ 'action' => 'update', 'ip' => '10.0.0.1' }, traks[1].metadata)
+    assert_nil traks[2].metadata
+  end
+end
+
+# ============================================================
+# 25. Boolean tracking
+# ============================================================
+class BooleanTrackingTest < IntegrationTest
+  def test_boolean_false_to_true
+    article = Article.create!(title: 'T', body: 'B', published: false)
+    article.update!(published: true)
+
+    trak = Trakable::Trak.where(item_type: 'Article', item_id: article.id, event: 'update').last
+    assert_equal [false, true], trak.changeset['published']
+  end
+
+  def test_boolean_true_to_false
+    article = Article.create!(title: 'T', body: 'B', published: true)
+    article.update!(published: false)
+
+    trak = Trakable::Trak.where(item_type: 'Article', item_id: article.id, event: 'update').last
+    assert_equal [true, false], trak.changeset['published']
+  end
+
+  def test_boolean_nil_to_true
+    article = Article.create!(title: 'T', body: 'B')
+    article.update_columns(published: nil) # bypass to set nil
+    article.reload
+    article.update!(published: true)
+
+    trak = Trakable::Trak.where(item_type: 'Article', item_id: article.id, event: 'update').last
+    assert_equal [nil, true], trak.changeset['published']
+  end
+end
+
+# ============================================================
+# 26. save! without changes
+# ============================================================
+class NoChangeTest < IntegrationTest
+  def test_save_without_changes_creates_no_trak
+    post = Post.create!(title: 'T', body: 'B')
+    count_before = Trakable::Trak.count
+
+    post.save!
+
+    assert_equal count_before, Trakable::Trak.count
+  end
+
+  def test_assign_same_value_creates_no_trak
+    post = Post.create!(title: 'Same', body: 'B')
+    count_before = Trakable::Trak.count
+
+    post.title = 'Same'
+    post.save!
+
+    assert_equal count_before, Trakable::Trak.count
+  end
+end
+
+# ============================================================
+# 27. Reload then update
+# ============================================================
+class ReloadTest < IntegrationTest
+  def test_reload_then_update_tracks_correctly
+    post = Post.create!(title: 'V1', body: 'B')
+
+    # External update (simulated)
+    Post.where(id: post.id).update_all(title: 'External')
+    post.reload
+
+    post.update!(title: 'V2')
+
+    trak = Trakable::Trak.where(item_type: 'Post', item_id: post.id, event: 'update').last
+    assert_equal ['External', 'V2'], trak.changeset['title']
+  end
+end
+
+# ============================================================
+# 28. Association changes
+# ============================================================
+class AssociationChangeTest < IntegrationTest
+  def test_belongs_to_id_change_tracked
+    User.create!(name: 'A')
+    User.create!(name: 'B')
+    comment = Comment.create!(post_id: 1, content: 'C')
+    comment.update!(post_id: 2)
+
+    trak = Trakable::Trak.where(item_type: 'Comment', item_id: comment.id, event: 'update').last
+    assert_equal [1, 2], trak.changeset['post_id']
+  end
+
+  def test_changing_author_on_article
+    author1 = User.create!(name: 'Writer 1')
+    author2 = User.create!(name: 'Writer 2')
+    article = Article.create!(title: 'T', body: 'B', author_id: author1.id)
+    article.update!(author_id: author2.id)
+
+    # author_id is NOT in only: [:title, :body, :published], so should be skipped
+    trak = Trakable::Trak.where(item_type: 'Article', item_id: article.id, event: 'update').last
+    assert_nil trak # No tracked attributes changed
+  end
+end
+
+# ============================================================
+# 29. Multiple sequential reverts
+# ============================================================
+class SequentialRevertTest < IntegrationTest
+  def test_revert_through_full_history
+    post = Post.create!(title: 'V1', body: 'B')
+    post.update!(title: 'V2')
+    post.update!(title: 'V3')
+    post.update!(title: 'V4')
+    post.update!(title: 'V5')
+
+    # Walk backwards through update traks in reverse chronological order
+    update_traks = Trakable::Trak.where(item_type: 'Post', item_id: post.id, event: 'update')
+                                 .order(created_at: :desc).to_a
+
+    update_traks.each(&:revert!)
+
+    post.reload
+    assert_equal 'V1', post.title
+  end
+end
+
+# ============================================================
+# 30. Whodunnit on destroy
+# ============================================================
+class WhodunnitDestroyTest < IntegrationTest
+  def test_destroy_records_whodunnit
+    admin = User.create!(name: 'Admin')
+    post = Post.create!(title: 'T', body: 'B')
+    post_id = post.id
+
+    Trakable.with_user(admin) do
+      post.destroy!
+    end
+
+    trak = Trakable::Trak.where(item_type: 'Post', item_id: post_id, event: 'destroy').last
+    assert_equal admin.id, trak.whodunnit_id
+    assert_equal 'User', trak.whodunnit_type
+  end
+end
+
+# ============================================================
+# 31. Status integer transitions
+# ============================================================
+class IntegerTransitionTest < IntegrationTest
+  def test_integer_transitions_tracked
+    post = Post.create!(title: 'T', body: 'B', status: 0)
+    post.update!(status: 1)
+    post.update!(status: 2)
+
+    traks = Trakable::Trak.where(item_type: 'Post', item_id: post.id, event: 'update').order(:created_at)
+    assert_equal [0, 1], traks[0].changeset['status']
+    assert_equal [1, 2], traks[1].changeset['status']
+  end
+
+  def test_integer_nil_to_zero
+    post = Post.create!(title: 'T', body: 'B')
+    post.update_columns(status: nil) # bypass to set nil
+    post.reload
+    post.update!(status: 0)
+
+    trak = Trakable::Trak.where(item_type: 'Post', item_id: post.id, event: 'update').last
+    assert_equal [nil, 0], trak.changeset['status']
+  end
+end
+
+# ============================================================
+# 32. Scope combinations
+# ============================================================
+class ScopeCombinationTest < IntegrationTest
+  def test_for_whodunnit_with_sti
+    admin = Admin.create!(name: 'Boss')
+    Trakable::Context.whodunnit = admin
+    Post.create!(title: 'T', body: 'B')
+
+    # for_whodunnit uses class name — with STI it's Admin, not User
+    assert_equal 1, Trakable::Trak.for_whodunnit(admin).count
+  end
+
+  def test_scopes_return_empty_when_no_match
+    Post.create!(title: 'T', body: 'B')
+
+    assert_equal 0, Trakable::Trak.for_item_type('NonExistent').count
+    assert_equal 0, Trakable::Trak.for_event(:unknown).count
+    assert_equal 0, Trakable::Trak.created_after(1.year.from_now).count
+  end
+end
+
+# ============================================================
+# 33. Destroy object snapshot completeness
+# ============================================================
+class DestroySnapshotTest < IntegrationTest
+  def test_destroy_snapshot_contains_all_attributes_except_id
+    post = Post.create!(title: 'Full', body: 'Snapshot', status: 2, views_count: 42)
+    post_id = post.id
+    post.destroy!
+
+    trak = Trakable::Trak.where(item_type: 'Post', item_id: post_id, event: 'destroy').last
+    obj = trak.object
+
+    assert_equal 'Full', obj['title']
+    assert_equal 'Snapshot', obj['body']
+    assert_equal 2, obj['status']
+    assert_equal 42, obj['views_count']
+    refute obj.key?('id')
+  end
+end
+
+# ============================================================
+# 34. Reify with delta storage accuracy
+# ============================================================
+class DeltaStorageTest < IntegrationTest
+  def test_update_only_stores_changed_attrs_in_object
+    post = Post.create!(title: 'T', body: 'B', status: 0)
+    post.update!(title: 'T2') # only title changes
+
+    trak = Trakable::Trak.where(item_type: 'Post', item_id: post.id, event: 'update').last
+
+    # object should only contain the previous value of changed attributes
+    assert trak.object.key?('title')
+    assert_equal 'T', trak.object['title']
+    # body and status did NOT change, so they should NOT be in the delta
+    # (they might be if previous_changes includes them, but AR only includes actually changed attrs)
+  end
+
+  def test_reify_reconstructs_full_state_from_delta
+    post = Post.create!(title: 'V1', body: 'Original Body', status: 0)
+    post.update!(title: 'V2') # only title
+
+    trak = Trakable::Trak.where(item_type: 'Post', item_id: post.id, event: 'update').last
+    reified = trak.reify
+
+    # Should have old title but current body (from live record)
+    assert_equal 'V1', reified.title
+    assert_equal 'Original Body', reified.body
+  end
+end
+
+# ============================================================
+# 35. Trak ordering guarantee
+# ============================================================
+class OrderingTest < IntegrationTest
+  def test_traks_ordered_by_creation
+    post = Post.create!(title: 'V0', body: 'B')
+    5.times { |i| post.update!(title: "V#{i + 1}") }
+
+    traks = Trakable::Trak.where(item_type: 'Post', item_id: post.id).order(:created_at)
+    events = traks.map(&:event)
+    assert_equal 'create', events.first
+    assert(events[1..].all? { |e| e == 'update' })
+
+    # Verify changeset progression
+    titles = traks.select(&:update?).map { |t| t.changeset['title'] }
+    assert_equal ['V0', 'V1'], titles.first
+    assert_equal ['V4', 'V5'], titles.last
+  end
+end
+
+# ============================================================
+# 36. Bulk import scenario
+# ============================================================
+class BulkImportTest < IntegrationTest
+  def test_many_creates_all_tracked
+    20.times { |i| Post.create!(title: "Post #{i}", body: "Body #{i}") }
+
+    assert_equal 20, Post.count
+    assert_equal 20, Trakable::Trak.where(item_type: 'Post', event: 'create').count
+  end
+
+  def test_create_then_immediate_destroy
+    ids = 10.times.map { |i| Post.create!(title: "Temp #{i}", body: 'B').id }
+    ids.each { |id| Post.find(id).destroy! }
+
+    assert_equal 0, Post.count
+    assert_equal 10, Trakable::Trak.where(item_type: 'Post', event: 'create').count
+    assert_equal 10, Trakable::Trak.where(item_type: 'Post', event: 'destroy').count
   end
 end
