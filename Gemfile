@@ -7,4 +7,5 @@ gemspec
 
 group :development, :test do
   gem 'debug', platforms: %i[mri windows]
+  gem 'simplecov', require: false
 end

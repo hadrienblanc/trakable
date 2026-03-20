@@ -4,6 +4,54 @@ require 'test_helper'
 require_relative '../../lib/trakable/revertable'
 require_relative '../../lib/trakable/trak'
 
+# Mock classes for testing - must be defined before tests
+# rubocop:disable Naming/PredicateMethod
+class MockPost
+  attr_accessor :id, :title, :body
+
+  @records = {}
+
+  class << self
+    attr_accessor :records
+  end
+
+  def self.find_by(id:)
+    records[id]
+  end
+
+  def initialize(id = nil, title = nil, body = nil)
+    @id = id
+    @title = title
+    @body = body
+  end
+
+  def persisted?
+    !!@id
+  end
+
+  def write_attribute(attr, value)
+    instance_variable_set("@#{attr}", value)
+  end
+
+  def respond_to?(method, include_all: false)
+    %i[id title body].include?(method.to_sym) || super
+  end
+
+  def save!(*)
+    true
+  end
+
+  def delete
+    MockPost.records.delete(@id)
+    true
+  end
+
+  def attributes
+    { 'id' => @id, 'title' => @title, 'body' => @body }
+  end
+end
+# rubocop:enable Naming/PredicateMethod
+
 class RevertableTest < Minitest::Test
   def setup
     Trakable::Context.reset!
@@ -159,6 +207,65 @@ class RevertableTest < Minitest::Test
 
     assert_equal post, result
     assert_equal 'Old Title', post.title
+  end
+
+  # revert! edge cases
+  def test_revert_create_returns_false_when_no_item
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 999,
+      event: 'create',
+      object: nil
+    )
+    trak.define_singleton_method(:item) { nil }
+
+    result = trak.revert!
+
+    refute result
+  end
+
+  def test_revert_update_returns_false_when_no_item
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 999,
+      event: 'update',
+      object: { 'title' => 'Title' }
+    )
+    trak.define_singleton_method(:item) { nil }
+
+    result = trak.revert!
+
+    refute result
+  end
+
+  def test_revert_update_returns_false_when_no_reified
+    post = MockPost.new(1, 'Title', 'Body')
+    MockPost.records[1] = post
+
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 1,
+      event: 'update',
+      object: nil
+    )
+    trak.define_singleton_method(:item) { post }
+
+    result = trak.revert!
+
+    refute result
+  end
+
+  def test_revert_destroy_returns_false_when_no_object
+    trak = Trakable::Trak.new(
+      item_type: 'MockPost',
+      item_id: 999,
+      event: 'destroy',
+      object: nil
+    )
+
+    result = trak.revert!
+
+    refute result
   end
 end
 

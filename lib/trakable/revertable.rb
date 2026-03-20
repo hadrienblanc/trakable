@@ -26,6 +26,7 @@ module Trakable
     #
     def reify
       return nil if create?
+      return nil if object.nil? || object.empty?
 
       model_class.new.tap do |record|
         object&.each do |attr, value|
