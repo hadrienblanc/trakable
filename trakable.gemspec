@@ -32,11 +32,9 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'activerecord', '>= 7.1', '< 8.2'
   spec.add_dependency 'activesupport', '>= 7.1', '< 8.2'
 
+  spec.add_development_dependency 'minitest', '~> 5.25'
   spec.add_development_dependency 'rake', '~> 13.0'
-  spec.add_development_dependency 'rspec', '~> 3.13'
-  spec.add_development_dependency 'rspec-rails', '~> 7.0'
   spec.add_development_dependency 'rubocop', '~> 1.69'
-  spec.add_development_dependency 'rubocop-rails', '~> 2.27'
-  spec.add_development_dependency 'rubocop-rspec', '~> 3.3'
+  spec.add_development_dependency 'rubocop-minitest', '~> 0.37'
   spec.add_development_dependency 'sqlite3', '~> 2.5'
 end

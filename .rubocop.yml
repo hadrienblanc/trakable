@@ -5,12 +5,15 @@ AllCops:
 
 Metrics/BlockLength:
   Exclude:
-    - spec/**/*
+    - test/**/*
     - rakelib/**/*
     - "*.gemspec"
 
+Metrics/ClassLength:
+  Max: 200
+
 Metrics/MethodLength:
-  Max: 15
+  Max: 20
 
 Layout/LineLength:
   Exclude:
@@ -18,8 +21,11 @@ Layout/LineLength:
 
 Style/Documentation:
   Exclude:
-    - spec/**/*
+    - test/**/*
     - lib/trakable/version.rb
+
+Style/ClassAndModuleChildren:
+  Enabled: false
 
 Gemspec/DevelopmentDependencies:
   Enabled: false
