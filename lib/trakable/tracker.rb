@@ -51,12 +51,12 @@ module Trakable
 
     def skip_if_condition?
       condition = record.trakable_options[:if]
-      condition && !record.instance_eval(&condition)
+      condition && !record.instance_exec(&condition)
     end
 
     def skip_unless_condition?
       condition = record.trakable_options[:unless]
-      condition && record.instance_eval(&condition)
+      condition && record.instance_exec(&condition)
     end
 
     def build_trak
