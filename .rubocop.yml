@@ -1,0 +1,28 @@
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 3.1
+  SuggestExtensions: false
+
+Metrics/BlockLength:
+  Exclude:
+    - spec/**/*
+    - rakelib/**/*
+    - "*.gemspec"
+
+Metrics/MethodLength:
+  Max: 15
+
+Layout/LineLength:
+  Exclude:
+    - "*.gemspec"
+
+Style/Documentation:
+  Exclude:
+    - spec/**/*
+    - lib/trakable/version.rb
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+Gemspec/RequireMFA:
+  Enabled: false
