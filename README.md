@@ -257,15 +257,13 @@ posts.each { |p| p.traks.size }
 
 ### Compress serialized columns (Rails 7.1+)
 
-For large `object`/`changeset` payloads, enable column compression:
+For large `object`/`changeset` payloads, enable column compression by adding a custom initializer:
 
 ```ruby
-class Trak < ApplicationRecord
-  self.table_name = 'traks'
-
-  serialize :object, coder: JSON, compress: true
-  serialize :changeset, coder: JSON, compress: true
-  serialize :metadata, coder: JSON
+# config/initializers/trakable_compression.rb
+Rails.application.config.after_initialize do
+  Trakable::Trak.serialize :object, coder: JSON, compress: true
+  Trakable::Trak.serialize :changeset, coder: JSON, compress: true
 end
 ```
 
