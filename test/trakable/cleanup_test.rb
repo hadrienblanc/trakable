@@ -59,7 +59,7 @@ class CleanupTest < Minitest::Test
 
     result = Trakable::Cleanup.run_retention(model_class)
 
-    assert result
+    assert_equal 0, result
   end
 
   def test_run_retention_with_override_period
@@ -68,7 +68,15 @@ class CleanupTest < Minitest::Test
 
     result = Trakable::Cleanup.run_retention(model_class, retention_period: retention)
 
-    assert result
+    assert_equal 0, result
+  end
+
+  def test_run_retention_accepts_batch_size
+    model_class = CleanupMockModelWithRetention
+
+    result = Trakable::Cleanup.run_retention(model_class, batch_size: 500)
+
+    assert_equal 0, result
   end
 end
 
