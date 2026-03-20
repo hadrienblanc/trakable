@@ -5,9 +5,9 @@ require_relative 'trakable/version'
 # Trakable provides audit logging and version tracking for ActiveRecord models.
 # It offers polymorphic whodunnit tracking, changesets, and built-in retention.
 module Trakable
-  class Error < StandardError; end
-
   class << self
+    # Returns the global configuration.
+    # Thread-safe after initial access (configure at app boot).
     def configuration
       @configuration ||= Configuration.new
     end
