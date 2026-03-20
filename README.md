@@ -187,11 +187,14 @@ class Post < ApplicationRecord
 end
 ```
 
-Cleanup runs automatically after each new trak is created. For bulk cleanup of old traks, you can run:
+Cleanup is **not** automatic — call it from a background job to keep your traks table lean:
 
 ```ruby
-# Clean up old traks for a specific model
+# In a recurring job (e.g. daily cron)
 Trakable::Cleanup.run_retention(Post)
+
+# Per-record cleanup (e.g. after a batch import)
+Trakable::Cleanup.run(post)
 ```
 
 ### Edge cases
