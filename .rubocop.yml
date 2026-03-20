@@ -23,6 +23,8 @@ Style/Documentation:
   Exclude:
     - test/**/*
     - lib/trakable/version.rb
+    - lib/generators/**/*
+    - lib/trakable/railtie.rb
 
 Style/ClassAndModuleChildren:
   Enabled: false

@@ -33,6 +33,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'activesupport', '>= 7.1', '< 8.2'
 
   spec.add_development_dependency 'minitest', '~> 5.25'
+  spec.add_development_dependency 'railties', '>= 7.1', '< 8.2'
   spec.add_development_dependency 'rake', '~> 13.0'
   spec.add_development_dependency 'rubocop', '~> 1.69'
   spec.add_development_dependency 'rubocop-minitest', '~> 0.37'
