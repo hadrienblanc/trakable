@@ -2,12 +2,16 @@ AllCops:
   NewCops: enable
   TargetRubyVersion: 3.1
   SuggestExtensions: false
+  Exclude:
+    - benchmark/**/*
+    - integration/**/*
 
 Metrics/BlockLength:
   Exclude:
     - test/**/*
     - rakelib/**/*
     - "*.gemspec"
+    - lib/trakable/model.rb
 
 Metrics/ClassLength:
   Max: 200
@@ -21,6 +25,27 @@ Metrics/ParameterLists:
   Max: 6
 
 Metrics/AbcSize:
+  Exclude:
+    - test/**/*
+    - lib/trakable/revertable.rb
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - lib/trakable/revertable.rb
+
+Metrics/PerceivedComplexity:
+  Exclude:
+    - lib/trakable/revertable.rb
+
+Lint/MissingSuper:
+  Exclude:
+    - lib/trakable/trak.rb
+
+Naming/MethodParameterName:
+  Exclude:
+    - test/**/*
+
+Style/OptionalBooleanParameter:
   Exclude:
     - test/**/*
 

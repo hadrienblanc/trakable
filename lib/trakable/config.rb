@@ -16,8 +16,6 @@ module Trakable
       @ignored_attrs = Array(attrs).map(&:to_s)
     end
 
-    def ignored_attrs
-      @ignored_attrs
-    end
+    attr_reader :ignored_attrs
   end
 end

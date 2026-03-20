@@ -75,9 +75,9 @@ module Trakable
       def register_after_commit_callbacks(events)
         events.each do |event|
           case event.to_sym
-          when :create  then after_commit(on: :create)  { |r| r.trak_create }
-          when :update  then after_commit(on: :update)  { |r| r.trak_update }
-          when :destroy then after_commit(on: :destroy) { |r| r.trak_destroy }
+          when :create  then after_commit(on: :create, &:trak_create)
+          when :update  then after_commit(on: :update, &:trak_update)
+          when :destroy then after_commit(on: :destroy, &:trak_destroy)
           end
         end
       end

@@ -35,7 +35,7 @@ module Trakable
                  whodunnit_type whodunnit_id metadata created_at].freeze
 
       # Pre-computed ivar symbols to avoid string interpolation in initialize
-      ATTR_IVARS = ATTRS.each_with_object({}) { |a, h| h[a] = :"@#{a}" }.freeze
+      ATTR_IVARS = ATTRS.to_h { |a| [a, :"@#{a}"] }.freeze
 
       attr_accessor(*ATTRS)
 
