@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-03-20
 
 ### Added
 
@@ -46,10 +46,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive README with usage examples
 - MIT License
 
-### Test Coverage
-
-- 173 tests, 338 assertions
-- 100% line coverage
-- 87% branch coverage (remaining branches require full Rails environment)
-
+[0.2.0]: https://github.com/hadrienblanc/trakable/releases/tag/v0.2.0
 [0.1.0]: https://github.com/hadrienblanc/trakable/releases/tag/v0.1.0
