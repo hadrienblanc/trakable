@@ -1,6 +1,9 @@
 # Trakable
 
 [![CI](https://github.com/hadrienblanc/trakable/actions/workflows/ci.yml/badge.svg)](https://github.com/hadrienblanc/trakable/actions/workflows/ci.yml)
+[![Gem Version](https://badge.fury.io/rb/trakable.svg)](https://rubygems.org/gems/trakable)
+[![Ruby](https://img.shields.io/badge/ruby-3.2%E2%80%934.0-red)](https://github.com/hadrienblanc/trakable)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 Audit logging and version tracking for ActiveRecord models.
 
