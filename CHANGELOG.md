@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Query scopes** on `Trakable::Trak` (AR-only): `for_item_type`, `for_event`, `for_whodunnit`, `created_before`, `created_after`, `recent`
+- **Batch deletion** in `run_retention` with configurable `batch_size` (default: 1,000) to avoid table locks
+- **CI/CD** via GitHub Actions (Ruby 3.1–3.4 matrix, tests + RuboCop)
+
+### Changed
+
+- **Cleanup is no longer synchronous** — `Cleanup.run` is no longer called after every trak creation. Run it from a background job instead.
+- `run_retention` now returns the total number of deleted rows (Integer) instead of `true`
+
 ## [0.1.0] - 2026-03-20
 
 ### Added
@@ -35,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Test Coverage
 
-- 162 tests, 312 assertions
+- 173 tests, 338 assertions
 - 100% line coverage
 - 87% branch coverage (remaining branches require full Rails environment)
 
