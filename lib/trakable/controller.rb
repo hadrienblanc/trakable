@@ -4,37 +4,30 @@ require 'active_support/concern'
 require 'active_support/core_ext/class/attribute'
 
 module Trakable
-  # Controller concern for automatically setting whodunnit from current_user.
+  # Controller concern for automatically setting whodunnit.
   #
-  # Include in your ApplicationController:
+  # Auto-included in ActionController::Base via Railtie.
+  # Uses Trakable.configuration.whodunnit_method (default: :current_user).
   #
-  #   class ApplicationController < ActionController::Base
-  #     include Trakable::Controller
+  # Override per-controller:
+  #
+  #   class AdminController < ApplicationController
+  #     set_trakable_whodunnit :current_admin
   #   end
-  #
-  # By default, uses :current_user method. Configure with:
-  #
-  #   set_trakable_whodunnit :current_admin
   #
   module Controller
     extend ActiveSupport::Concern
 
     included do
-      class_attribute :trakable_whodunnit_method, instance_writer: false, default: :current_user
+      class_attribute :trakable_whodunnit_method, instance_writer: false,
+                                                  default: Trakable.configuration.whodunnit_method
 
-      # Only register callback if around_action is available (Rails controllers)
       around_action :set_trakable_whodunnit if respond_to?(:around_action)
     end
 
     class_methods do
-      # Configure the method used to get the current user.
-      #
-      # @param method_name [Symbol] The method name (default: :current_user)
-      #
-      # @example
-      #   set_trakable_whodunnit :current_admin
-      #
-      def set_trakable_whodunnit(method_name = :current_user)
+      # Override the whodunnit method for this controller.
+      def set_trakable_whodunnit(method_name)
         self.trakable_whodunnit_method = method_name
       end
     end

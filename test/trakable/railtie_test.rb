@@ -18,6 +18,9 @@ class RailtieTest < Minitest::Test
     assert_includes railtie_source, 'generators do'
     assert_includes railtie_source, 'initializer'
     assert_includes railtie_source, 'trakable.configure'
+    assert_includes railtie_source, 'trakable.controller'
+    assert_includes railtie_source, 'action_controller_base'
+    assert_includes railtie_source, 'Trakable::Controller'
   end
 
   def test_railtie_only_loads_in_rails

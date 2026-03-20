@@ -50,11 +50,23 @@ class Post < ApplicationRecord
 end
 ```
 
-### 3. Set whodunnit in your controller
+### 3. Whodunnit is automatic
+
+Trakable auto-includes its controller concern via Railtie. It calls `current_user` by default — no setup needed.
+
+To use a different method:
 
 ```ruby
-class ApplicationController < ActionController::Base
-  include Trakable::Controller
+Trakable.configure do |config|
+  config.whodunnit_method = :current_admin
+end
+```
+
+Or override per-controller:
+
+```ruby
+class AdminController < ApplicationController
+  set_trakable_whodunnit :current_admin
 end
 ```
 
@@ -71,6 +83,9 @@ Trakable.configure do |config|
 
   # Attributes to ignore by default
   config.ignored_attrs = %w[created_at updated_at id]
+
+  # Controller method that returns the current user (default: :current_user)
+  config.whodunnit_method = :current_user
 end
 ```
 
@@ -265,11 +280,12 @@ destroy_trak.revert!  # => Creates new record with same attributes but new ID
 | `created_after(time)` | Scope: traks after a timestamp |
 | `recent` | Scope: newest first |
 
-### Trakable::Controller
+### Trakable::Controller (auto-included via Railtie)
 
 | Method | Description |
 |--------|-------------|
-| `set_trakable_whodunnit(method)` | Configure method to get current user (default: :current_user) |
+| `set_trakable_whodunnit(method)` | Override whodunnit method for this controller |
+| `config.whodunnit_method` | Global default (default: `:current_user`) |
 
 ## Performance Tips
 

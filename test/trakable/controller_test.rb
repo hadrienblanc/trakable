@@ -113,6 +113,10 @@ class ControllerTest < Minitest::Test
   def test_trakable_whodunnit_method_returns_default_when_not_set
     assert_equal :current_user, MockControllerWithoutAroundAction.trakable_whodunnit_method
   end
+
+  def test_default_reads_from_global_config
+    assert_equal Trakable.configuration.whodunnit_method, MockController.trakable_whodunnit_method
+  end
 end
 
 # Mock classes for testing
